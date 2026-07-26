@@ -1,0 +1,157 @@
+/* ============================================================
+   PromptHub - 全局样式
+   深色主题为主，支持明暗模式切换（class 策略）
+   ============================================================ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---- CSS 变量：主题色 ---- */
+@layer base {
+  :root {
+    /* 浅色模式 */
+    --bg-primary: 255 255 255;
+    --bg-secondary: 248 250 252;
+    --bg-card: 255 255 255;
+    --text-primary: 15 23 42;
+    --text-secondary: 71 85 105;
+    --text-muted: 148 163 184;
+    --border: 226 232 240;
+    --accent: 139 92 246;
+    --accent-hover: 124 58 237;
+  }
+
+  .dark {
+    /* 深色模式（默认） */
+    --bg-primary: 15 23 42;
+    --bg-secondary: 30 41 59;
+    --bg-card: 30 41 59;
+    --text-primary: 248 250 252;
+    --text-secondary: 203 213 225;
+    --text-muted: 100 116 139;
+    --border: 51 65 85;
+    --accent: 139 92 246;
+    --accent-hover: 167 139 250;
+  }
+
+  /* 全局基础样式 */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-white dark:bg-dark-900 text-slate-900 dark:text-slate-50 antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  /* 自定义滚动条 */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-400 dark:bg-slate-600 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-500 dark:bg-slate-500;
+  }
+}
+
+/* ---- 通用组件样式 ---- */
+@layer components {
+  /* 页面容器 */
+  .container-page {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  /* 卡片样式 */
+  .card {
+    @apply bg-white dark:bg-dark-800 border border-slate-200 dark:border-dark-700
+           rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200;
+  }
+
+  /* 按钮基础样式 */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg
+           font-medium text-sm transition-all duration-200
+           focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2
+           dark:focus:ring-offset-dark-900 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-primary {
+    @apply btn bg-brand-600 hover:bg-brand-700 text-white
+           shadow-sm hover:shadow-md;
+  }
+
+  .btn-secondary {
+    @apply btn bg-slate-100 dark:bg-dark-700 text-slate-700 dark:text-slate-200
+           hover:bg-slate-200 dark:hover:bg-dark-600 border border-slate-200 dark:border-dark-600;
+  }
+
+  .btn-ghost {
+    @apply btn bg-transparent text-slate-600 dark:text-slate-300
+           hover:bg-slate-100 dark:hover:bg-dark-700;
+  }
+
+  .btn-danger {
+    @apply btn bg-red-600 hover:bg-red-700 text-white;
+  }
+
+  /* 输入框样式 */
+  .input {
+    @apply w-full px-3.5 py-2.5 rounded-lg text-sm
+           bg-white dark:bg-dark-800
+           border border-slate-300 dark:border-dark-600
+           text-slate-900 dark:text-slate-100
+           placeholder:text-slate-400 dark:placeholder:text-slate-500
+           focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent
+           transition-colors duration-200;
+  }
+
+  /* 标签/徽章样式 */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .badge-primary {
+    @apply badge bg-brand-100 dark:bg-brand-900/40 text-brand-700 dark:text-brand-300;
+  }
+
+  .badge-default {
+    @apply badge bg-slate-100 dark:bg-dark-700 text-slate-600 dark:text-slate-400;
+  }
+
+  /* 链接样式 */
+  .link {
+    @apply text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300
+           transition-colors duration-200;
+  }
+
+  /* 页面标题 */
+  .page-title {
+    @apply text-3xl sm:text-4xl font-bold tracking-tight;
+  }
+
+  .page-subtitle {
+    @apply mt-3 text-lg text-slate-600 dark:text-slate-400;
+  }
+}
+
+/* ---- 动画 ---- */
+@layer utilities {
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
