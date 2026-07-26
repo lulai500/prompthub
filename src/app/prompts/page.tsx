@@ -6,6 +6,7 @@
 import Link from 'next/link';
 import { Search, SlidersHorizontal, Copy, X } from 'lucide-react';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+import SupabaseMissing from '@/components/ui/SupabaseMissing';
 import PromptTags from '@/components/prompts/PromptTags';
 import { formatDate } from '@/lib/utils';
 import type { Category, Prompt } from '@/types';
@@ -25,6 +26,7 @@ export default async function PromptsPage({
   searchParams: SearchParams;
 }) {
   const supabase = createServerSupabaseClient();
+  if (!supabase) return <SupabaseMissing />;
 
   // 获取搜索参数
   const search = searchParams.search || '';

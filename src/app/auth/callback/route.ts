@@ -15,7 +15,9 @@ export async function GET(request: Request) {
   if (code) {
     const supabase = createServerSupabaseClient();
     // 将 auth code 交换为 session
-    await supabase.auth.exchangeCodeForSession(code);
+    if (supabase) {
+      await supabase.auth.exchangeCodeForSession(code);
+    }
   }
 
   // 密码重置 → 重定向到修改密码页面

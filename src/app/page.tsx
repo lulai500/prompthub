@@ -16,12 +16,14 @@ import {
   FolderOpen,
 } from 'lucide-react';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+import SupabaseMissing from '@/components/ui/SupabaseMissing';
 import type { Category, Prompt } from '@/types';
 
 export const dynamic = 'force-dynamic'; // 禁止静态缓存，确保数据实时
 
 export default async function HomePage() {
   const supabase = createServerSupabaseClient();
+  if (!supabase) return <SupabaseMissing />;
 
   // 并行获取数据：全部分类 + 热门提示词（按使用次数排序，前6条）
   const [categoriesResult, promptsResult] = await Promise.all([

@@ -7,12 +7,17 @@
 import { createBrowserClient } from '@supabase/ssr';
 
 /**
- * 创建 Supabase 浏览器客户端（单例模式）
- * 在客户端组件中使用，自动处理 session 持久化
+ * 创建 Supabase 浏览器客户端
+ * 如果环境变量未配置则返回 null，调用方需做空值检查
  */
 export function createClient() {
-  return createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  // 环境变量缺失时返回 null，避免构建崩溃
+  if (!url || !key || url.includes('your-project')) {
+    return null;
+  }
+
+  return createBrowserClient(url, key);
 }

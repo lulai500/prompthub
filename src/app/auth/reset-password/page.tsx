@@ -8,9 +8,11 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Mail, Send, ArrowLeft, CheckCircle } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import SupabaseMissing from '@/components/ui/SupabaseMissing';
 
 export default function ResetPasswordPage() {
   const supabase = createClient();
+  if (!supabase) return <SupabaseMissing />;
 
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
@@ -20,6 +22,7 @@ export default function ResetPasswordPage() {
   /** 发送重置密码邮件 */
   async function handleResetPassword(e: React.FormEvent) {
     e.preventDefault();
+    if (!supabase) return;
     setError('');
 
     if (!email.trim()) {

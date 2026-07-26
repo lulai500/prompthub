@@ -9,10 +9,12 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Mail, Lock, Eye, EyeOff, LogIn } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import SupabaseMissing from '@/components/ui/SupabaseMissing';
 
 export default function LoginPage() {
   const router = useRouter();
   const supabase = createClient();
+  if (!supabase) return <SupabaseMissing />;
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -23,6 +25,7 @@ export default function LoginPage() {
   /** 处理登录 */
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
+    if (!supabase) return;
     setError('');
 
     if (!email.trim() || !password) {

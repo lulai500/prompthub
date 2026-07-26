@@ -8,6 +8,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Tag, Monitor, Lightbulb, Image } from 'lucide-react';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+import SupabaseMissing from '@/components/ui/SupabaseMissing';
 import { formatDate } from '@/lib/utils';
 import CopyButton from '@/components/prompts/CopyButton';
 import FavoriteButton from '@/components/prompts/FavoriteButton';
@@ -21,6 +22,7 @@ interface Props {
 
 export default async function PromptDetailPage({ params }: Props) {
   const supabase = createServerSupabaseClient();
+  if (!supabase) return <SupabaseMissing />;
   const { id } = params;
 
   // 通过 slug 或 id 查询

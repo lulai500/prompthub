@@ -9,10 +9,12 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Mail, Lock, User, Eye, EyeOff, UserPlus } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import SupabaseMissing from '@/components/ui/SupabaseMissing';
 
 export default function RegisterPage() {
   const router = useRouter();
   const supabase = createClient();
+  if (!supabase) return <SupabaseMissing />;
 
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -24,6 +26,7 @@ export default function RegisterPage() {
   /** 处理注册 */
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
+    if (!supabase) return;
     setError('');
 
     if (!username.trim() || !email.trim() || !password) {

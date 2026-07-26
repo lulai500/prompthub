@@ -9,12 +9,14 @@ import { useRouter } from 'next/navigation';
 import { User, Save, ArrowLeft, Shield, Crown, Clock } from 'lucide-react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+import SupabaseMissing from '@/components/ui/SupabaseMissing';
 import { getMembershipLabel } from '@/lib/utils';
 import type { Profile } from '@/types';
 
 export default function SettingsPage() {
   const router = useRouter();
   const supabase = createClient();
+  if (!supabase) return <SupabaseMissing />;
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -33,6 +35,7 @@ export default function SettingsPage() {
 
   /** 加载 profile */
   async function loadProfile() {
+    if (!supabase) return;
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) {
       router.push('/auth/login');
@@ -57,6 +60,7 @@ export default function SettingsPage() {
   /** 保存设置 */
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
+    if (!supabase) return;
     setError('');
     setMessage('');
 
