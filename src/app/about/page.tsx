@@ -97,16 +97,8 @@ export default function AboutPage() {
 
           <div className="flex items-center justify-center gap-4 text-sm">
             <a
-              href="https://github.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn-secondary"
-            >
-              View on GitHub
-            </a>
-            <a
               href="mailto:hello@prompthub.app"
-              className="btn-ghost text-brand-600 dark:text-brand-400"
+              className="btn-secondary"
             >
               Contact Us
             </a>

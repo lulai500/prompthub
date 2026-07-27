@@ -125,7 +125,7 @@ export default async function PromptDetailPage({ params }: Props) {
               <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
                 Prompt Text
               </h2>
-              <CopyButton text={p.content} label="Copy Prompt" />
+              <CopyButton text={p.content} label="Copy Prompt" promptId={p.id} />
             </div>
             {/* Prompt 代码块 */}
             <pre className="p-4 rounded-xl bg-slate-950 dark:bg-dark-950 border border-slate-800 overflow-x-auto">
@@ -207,7 +207,7 @@ export default async function PromptDetailPage({ params }: Props) {
               Actions
             </h3>
             <div className="space-y-3">
-              <CopyButton text={p.content} label="Copy Prompt" />
+              <CopyButton text={p.content} label="Copy Prompt" promptId={p.id} />
               <FavoriteButton promptId={p.id} />
 
               {p.model_name && (

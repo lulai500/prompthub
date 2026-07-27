@@ -11,16 +11,22 @@ import { copyToClipboard } from '@/lib/utils';
 interface CopyButtonProps {
   text: string;
   label?: string;
+  /** 提示词 ID，传入后复制时会递增使用计数 */
+  promptId?: number;
 }
 
-export default function CopyButton({ text, label = 'Copy' }: CopyButtonProps) {
+export default function CopyButton({ text, label = 'Copy', promptId }: CopyButtonProps) {
   const [copied, setCopied] = useState(false);
 
   async function handleCopy() {
     const success = await copyToClipboard(text);
     if (success) {
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000); // 2秒后复原
+      setTimeout(() => setCopied(false), 2000);
+      // fire-and-forget: 递增使用计数，不阻塞 UI
+      if (promptId) {
+        fetch(`/api/prompts/${promptId}/usage`, { method: 'POST' }).catch(() => {});
+      }
     }
   }
 
