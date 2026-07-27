@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { Search, SlidersHorizontal, Copy, X } from 'lucide-react';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { formatDate } from '@/lib/utils';
+import TagLinks from '@/components/prompts/TagLinks';
 import type { Category, Prompt } from '@/types';
 
 export const dynamic = 'force-dynamic';
@@ -180,18 +181,7 @@ export default async function PromptsPage({
                         Model: {prompt.model_name}
                       </p>
                     )}
-                    <div className="flex flex-wrap gap-1.5 mb-3">
-                      {prompt.tags?.slice(0, 4).map((tag) => (
-                        <Link
-                          key={tag}
-                          href={`/prompts?tag=${tag}`}
-                          className="badge-default text-xs hover:bg-brand-100 dark:hover:bg-brand-900/20 hover:text-brand-600 dark:hover:text-brand-400"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {tag}
-                        </Link>
-                      ))}
-                    </div>
+                    <TagLinks tags={prompt.tags || []} />
                     <div className="flex items-center justify-between text-xs text-slate-400 dark:text-slate-500">
                       <span>{formatDate(prompt.created_at)}</span>
                       <span className="flex items-center gap-1">
