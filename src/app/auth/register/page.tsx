@@ -17,14 +17,17 @@ export default function RegisterPage() {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
 
   /** 处理注册 */
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+    setSuccess(false);
 
     if (!username.trim() || !email.trim() || !password) {
       setError('Please fill in all fields.');
@@ -34,10 +37,13 @@ export default function RegisterPage() {
       setError('Password must be at least 8 characters.');
       return;
     }
+    if (password !== confirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
 
     setLoading(true);
-    // 注册用户，同时传递 username 到 user_metadata
-    const { error: signUpError } = await supabase.auth.signUp({
+    const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -50,11 +56,18 @@ export default function RegisterPage() {
     if (signUpError) {
       setError(signUpError.message);
       setLoading(false);
-    } else {
-      // 注册成功，跳转到 dashboard
-      // 注意：如果开启了邮箱验证，会先显示验证提示
+      return;
+    }
+
+    // 检查是否需要邮箱验证
+    if (data.session) {
+      // 邮箱验证已关闭 → 直接登录
       router.refresh();
       router.push('/dashboard');
+    } else {
+      // 邮箱验证已开启 → 显示提示
+      setSuccess(true);
+      setLoading(false);
     }
   }
 
@@ -76,6 +89,16 @@ export default function RegisterPage() {
 
         {/* 表单 */}
         <form onSubmit={handleRegister} className="card p-6 space-y-4">
+          {/* 成功提示：需要验证邮箱 */}
+          {success && (
+            <div className="p-4 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-sm text-green-700 dark:text-green-300">
+              <p className="font-semibold mb-1">Check your email!</p>
+              <p>
+                We&apos;ve sent a confirmation link to <strong>{email}</strong>.
+                Please click the link in the email to activate your account.
+              </p>
+            </div>
+          )}
           {error && (
             <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-sm text-red-600 dark:text-red-400">
               {error}
@@ -160,8 +183,30 @@ export default function RegisterPage() {
             </div>
           </div>
 
+          {/* 确认密码 */}
+          <div>
+            <label
+              htmlFor="confirmPassword"
+              className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5"
+            >
+              Confirm password
+            </label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Re-enter your password"
+                className="input pl-9"
+                required
+              />
+            </div>
+          </div>
+
           {/* 提交 */}
-          <button type="submit" disabled={loading} className="btn-primary w-full">
+          <button type="submit" disabled={loading || success} className="btn-primary w-full">
             {loading ? (
               <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
             ) : (
