@@ -14,14 +14,12 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import SupabaseMissing from '@/components/ui/SupabaseMissing';
 import { formatDate, getMembershipLabel } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
   const supabase = createServerSupabaseClient();
-  if (!supabase) return <SupabaseMissing />;
 
   // 获取当前用户
   const {

@@ -37,11 +37,6 @@ export default function Header() {
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    // Supabase 未配置时，跳过认证
-    if (!supabase) {
-      setLoading(false);
-      return;
-    }
     // 获取当前登录用户
     checkUser();
     // 监听认证状态变化
@@ -63,7 +58,6 @@ export default function Header() {
 
   /** 检查用户登录状态 */
   async function checkUser() {
-    if (!supabase) return;
     const {
       data: { session },
     } = await supabase.auth.getSession();
@@ -76,7 +70,6 @@ export default function Header() {
 
   /** 获取用户 profile */
   async function fetchProfile(userId: string) {
-    if (!supabase) return;
     const { data } = await supabase
       .from('profiles')
       .select('*')
@@ -88,7 +81,6 @@ export default function Header() {
 
   /** 退出登录 */
   async function handleLogout() {
-    if (!supabase) return;
     await supabase.auth.signOut();
     setUser(null);
     setUserMenuOpen(false);

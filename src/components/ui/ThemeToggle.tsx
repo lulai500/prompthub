@@ -1,41 +1,55 @@
 'use client';
 // ============================================================
 // 明暗主题切换按钮
-// 使用 class 策略控制 dark mode，切换时在 <html> 上添加/移除 'dark' class
+// 通过 cookie 传递主题偏好给服务端，确保 SSR 水合一致
 // ============================================================
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Moon, Sun } from 'lucide-react';
 
+/** 从 cookie 读取当前主题（不依赖 document.documentElement） */
+function getInitialTheme(): boolean {
+  if (typeof document === 'undefined') return true; // SSR fallback
+  const match = document.cookie.match(/(?:^|;\s*)theme=([^;]*)/);
+  // cookie 值为 "light" → 浅色模式 → isDark = false
+  return match?.[1] !== 'light';
+}
+
+/** 写入主题到 cookie 和 localStorage，然后刷新页面让服务端接管 */
+function applyTheme(isDark: boolean) {
+  // 设置 cookie（SameSite=Lax，path=/）
+  const theme = isDark ? 'dark' : 'light';
+  document.cookie = `theme=${theme};path=/;max-age=31536000;SameSite=Lax`;
+  // 同步 localStorage（给内联脚本用）
+  try {
+    localStorage.setItem('theme', theme);
+  } catch {}
+}
+
 export default function ThemeToggle() {
-  const [isDark, setIsDark] = useState(true); // 默认深色主题
+  const router = useRouter();
+  const [isDark, setIsDark] = useState(true); // SSR 默认，客户端 mount 后修正
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // 页面加载时检查本地存储的主题偏好
-    const stored = localStorage.getItem('theme');
-    if (stored === 'light') {
-      setIsDark(false);
-      document.documentElement.classList.remove('dark');
-    } else {
-      // 默认深色
-      document.documentElement.classList.add('dark');
-    }
+    setIsDark(getInitialTheme());
+    setMounted(true);
   }, []);
 
   /** 切换主题 */
   const toggleTheme = () => {
-    setIsDark((prev) => {
-      const next = !prev;
-      if (next) {
-        document.documentElement.classList.add('dark');
-        localStorage.setItem('theme', 'dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-        localStorage.setItem('theme', 'light');
-      }
-      return next;
-    });
+    const next = !isDark;
+    setIsDark(next);
+    applyTheme(next);
+    // 刷新路由让服务端用新 cookie 渲染，彻底消除水合不一致
+    router.refresh();
   };
+
+  // 未 mount 时不渲染图标，避免 SSR/CSR 图标不一致
+  if (!mounted) {
+    return <div className="w-9 h-9" />;
+  }
 
   return (
     <button

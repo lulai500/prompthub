@@ -18,14 +18,12 @@ import {
   Copy,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
-import SupabaseMissing from '@/components/ui/SupabaseMissing';
 import { formatDate } from '@/lib/utils';
 import type { Favorite, Folder as FolderType } from '@/types';
 
 export default function FavoritesPage() {
   const router = useRouter();
   const supabase = createClient();
-  if (!supabase) return <SupabaseMissing />;
 
   const [user, setUser] = useState<any>(null);
   const [favorites, setFavorites] = useState<Favorite[]>([]);
@@ -38,7 +36,6 @@ export default function FavoritesPage() {
 
   /** 加载数据 */
   const loadData = useCallback(async () => {
-    if (!supabase) return;
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) {
       router.push('/auth/login');
@@ -71,7 +68,6 @@ export default function FavoritesPage() {
 
   /** 创建文件夹 */
   async function handleCreateFolder() {
-    if (!supabase) return;
     if (!newFolderName.trim()) return;
     const { error: insertError } = await supabase.from('folders').insert({
       user_id: user.id,
@@ -88,7 +84,6 @@ export default function FavoritesPage() {
 
   /** 删除文件夹 */
   async function handleDeleteFolder(folderId: number) {
-    if (!supabase) return;
     if (!confirm('Delete this folder? Favorites inside will become uncategorized.')) return;
     await supabase.from('folders').delete().eq('id', folderId);
     setSelectedFolder(null);
@@ -97,7 +92,6 @@ export default function FavoritesPage() {
 
   /** 移动收藏到文件夹 */
   async function handleMoveToFolder(favoriteId: number, folderId: number | null) {
-    if (!supabase) return;
     await supabase
       .from('favorites')
       .update({ folder_id: folderId })
@@ -107,7 +101,6 @@ export default function FavoritesPage() {
 
   /** 取消收藏 */
   async function handleRemoveFavorite(favoriteId: number) {
-    if (!supabase) return;
     await supabase.from('favorites').delete().eq('id', favoriteId);
     loadData();
   }

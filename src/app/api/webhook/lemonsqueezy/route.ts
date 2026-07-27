@@ -44,12 +44,6 @@ export async function POST(request: Request) {
 
     // 使用 admin client 绕过 RLS，确保 webhook 可以修改任意用户数据
     const supabase = createAdminClient();
-    if (!supabase) {
-      return NextResponse.json(
-        { error: 'Admin client not configured' },
-        { status: 501 }
-      );
-    }
 
     // ---- 根据事件类型处理 ----
     switch (eventName) {

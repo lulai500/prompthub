@@ -23,17 +23,11 @@ export default function FavoriteButton({ promptId }: FavoriteButtonProps) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Supabase 未配置时，保持禁用状态
-    if (!supabase) {
-      setLoading(false);
-      return;
-    }
     checkFavorite();
   }, [promptId]);
 
   /** 检查当前用户是否已收藏 */
   async function checkFavorite() {
-    if (!supabase) return;
     const {
       data: { session },
     } = await supabase.auth.getSession();
@@ -52,7 +46,6 @@ export default function FavoriteButton({ promptId }: FavoriteButtonProps) {
 
   /** 切换收藏 */
   async function toggleFavorite() {
-    if (!supabase) return;
     if (!user) {
       // 未登录 → 跳转登录页
       router.push('/auth/login');

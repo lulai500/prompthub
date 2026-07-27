@@ -4,6 +4,7 @@
 // ============================================================
 
 import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
 import './globals.css';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
@@ -30,19 +31,26 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // 从 cookie 读取主题偏好，确保服务端和客户端渲染一致，消除水合错误
+  const cookieStore = cookies();
+  const themeCookie = cookieStore.get('theme')?.value;
+  // 默认深色主题；只有明确选了 "light" 才用浅色
+  const isLight = themeCookie === 'light';
+  const htmlClass = isLight ? '' : 'dark';
+
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
+    <html lang="en" className={htmlClass} suppressHydrationWarning>
       <head>
-        {/* 防止页面加载时的主题闪烁 */}
+        {/* 在 JS 可用前立即应用主题，防止白屏闪烁 */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
                 try {
-                  var theme = localStorage.getItem('theme');
-                  if (theme === 'light') {
+                  var stored = localStorage.getItem('theme');
+                  if (stored === 'light') {
                     document.documentElement.classList.remove('dark');
-                  } else {
+                  } else if (stored === 'dark') {
                     document.documentElement.classList.add('dark');
                   }
                 } catch(e) {}
@@ -51,7 +59,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="flex flex-col min-h-screen">
+      <body className="flex flex-col min-h-screen" suppressHydrationWarning>
         <Header />
         <main className="flex-1">{children}</main>
         <Footer />
