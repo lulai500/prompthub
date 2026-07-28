@@ -7,8 +7,18 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Mail, Lock, User, Eye, EyeOff, UserPlus } from 'lucide-react';
+import { Mail, Lock, User, Eye, EyeOff, UserPlus, Check, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+
+/** 密码规则校验 */
+function getPasswordChecks(password: string) {
+  return [
+    { label: 'At least 8 characters', passed: password.length >= 8 },
+    { label: 'Contains uppercase letter', passed: /[A-Z]/.test(password) },
+    { label: 'Contains lowercase letter', passed: /[a-z]/.test(password) },
+    { label: 'Contains number', passed: /[0-9]/.test(password) },
+  ];
+}
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -123,8 +133,13 @@ export default function RegisterPage() {
                 placeholder="Your display name"
                 className="input pl-9"
                 required
+                minLength={3}
+                maxLength={30}
               />
             </div>
+            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+              3–30 characters, letters, numbers, and underscores only
+            </p>
           </div>
 
           {/* 邮箱 */}
@@ -164,7 +179,7 @@ export default function RegisterPage() {
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="At least 8 characters"
+                placeholder="Create a strong password"
                 className="input pl-9 pr-10"
                 required
                 minLength={8}
@@ -181,6 +196,29 @@ export default function RegisterPage() {
                 )}
               </button>
             </div>
+            {/* 密码强度指示器 */}
+            {password.length > 0 && (
+              <div className="mt-2 space-y-1">
+                {getPasswordChecks(password).map((check) => (
+                  <div key={check.label} className="flex items-center gap-2 text-xs">
+                    {check.passed ? (
+                      <Check className="w-3 h-3 text-green-500 shrink-0" />
+                    ) : (
+                      <X className="w-3 h-3 text-slate-300 dark:text-slate-600 shrink-0" />
+                    )}
+                    <span
+                      className={
+                        check.passed
+                          ? 'text-green-600 dark:text-green-400'
+                          : 'text-slate-400 dark:text-slate-500'
+                      }
+                    >
+                      {check.label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* 确认密码 */}

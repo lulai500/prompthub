@@ -226,7 +226,9 @@ export default async function PromptDetailPage({ params }: Props) {
                   Usage Count
                 </p>
                 <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                  {p.usage_count} copies
+                  {p.usage_count > 0
+                    ? `${p.usage_count} cop${p.usage_count !== 1 ? 'ies' : 'y'}`
+                    : 'Be the first to try!'}
                 </p>
               </div>
             </div>

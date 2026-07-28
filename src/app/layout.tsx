@@ -5,12 +5,9 @@
 
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
-import dynamic from 'next/dynamic';
 import './globals.css';
+import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
-
-// 禁用 Header 的 SSR，彻底消除其水合错误
-const Header = dynamic(() => import('@/components/layout/Header'), { ssr: false });
 
 // SEO 元数据
 export const metadata: Metadata = {
@@ -44,6 +41,8 @@ export default function RootLayout({
   return (
     <html lang="en" className={htmlClass} suppressHydrationWarning>
       <head>
+        {/* 禁用 Chrome 自动翻译，防止其修改 DOM 导致 React 水合 insertBefore 错误 */}
+        <meta name="google" content="notranslate" />
         {/* 在 JS 可用前立即应用主题，防止白屏闪烁 */}
         <script
           dangerouslySetInnerHTML={{

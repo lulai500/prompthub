@@ -64,10 +64,16 @@ export default function PromptCard({ prompt }: PromptCardProps) {
       {/* 底部信息 */}
       <div className="flex items-center justify-between text-xs text-slate-400 dark:text-slate-500">
         <span>{formatDate(prompt.created_at)}</span>
-        <span className="flex items-center gap-1">
-          <Copy className="w-3 h-3" />
-          {prompt.usage_count} uses
-        </span>
+        {prompt.usage_count > 0 ? (
+          <span className="flex items-center gap-1">
+            <Copy className="w-3 h-3" />
+            {prompt.usage_count} use{prompt.usage_count !== 1 ? 's' : ''}
+          </span>
+        ) : (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
+            New
+          </span>
+        )}
       </div>
     </Link>
   );
