@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "translate:check": "node scripts/translate-prompts.mjs --dry-run",
+    "translate:run": "node scripts/translate-prompts.mjs --force"
   },
   "dependencies": {
     "next": "14.2.5",
