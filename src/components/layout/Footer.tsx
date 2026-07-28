@@ -3,6 +3,7 @@
 // ============================================================
 
 import Link from 'next/link';
+import { MessageSquare } from 'lucide-react';
 
 export default function Footer() {
   return (
@@ -34,10 +35,11 @@ export default function Footer() {
               About
             </Link>
             <Link
-              href="/pricing"
-              className="hover:text-brand-600 dark:hover:text-brand-400 transition-colors"
+              href="/feedback"
+              className="inline-flex items-center gap-1.5 hover:text-brand-600 dark:hover:text-brand-400 transition-colors"
             >
-              Pricing
+              <MessageSquare className="w-3.5 h-3.5" />
+              Feedback
             </Link>
             <a
               href="https://github.com"
