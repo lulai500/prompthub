@@ -11,6 +11,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { formatDate } from '@/lib/utils';
 import CopyButton from '@/components/prompts/CopyButton';
 import FavoriteButton from '@/components/prompts/FavoriteButton';
+import RatingStars from '@/components/prompts/RatingStars';
 import type { Prompt } from '@/types';
 
 export const dynamic = 'force-dynamic';
@@ -27,7 +28,7 @@ export default async function PromptDetailPage({ params }: Props) {
   const isNumericId = /^\d+$/.test(id);
   let query = supabase
     .from('prompts')
-    .select('*, category:categories(*)')
+    .select('*, category:categories(*), author:profiles_public(*)')
     .eq('is_published', true);
 
   if (isNumericId) {
@@ -43,6 +44,13 @@ export default async function PromptDetailPage({ params }: Props) {
   }
 
   const p: Prompt = prompt;
+
+  // 预取评分统计
+  const { data: promptStats } = await supabase
+    .from('prompt_stats')
+    .select('*')
+    .eq('prompt_id', p.id)
+    .single();
 
   return (
     <div className="container-page py-10">
@@ -111,12 +119,27 @@ export default async function PromptDetailPage({ params }: Props) {
               </div>
             )}
 
-            {/* 发布时间 */}
-            <p className="text-xs text-slate-400 dark:text-slate-500">
-              Published on {formatDate(p.created_at)}
-              {p.updated_at !== p.created_at &&
-                ` · Updated ${formatDate(p.updated_at)}`}
-            </p>
+            {/* 作者 & 发布时间 */}
+            <div className="flex items-center gap-4 text-xs text-slate-400 dark:text-slate-500">
+              {p.author && (
+                <Link
+                  href={`/users/${p.author.username || p.author.id}`}
+                  className="flex items-center gap-1.5 hover:text-brand-600 dark:hover:text-brand-400 transition-colors"
+                >
+                  <div className="w-5 h-5 rounded-full bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center">
+                    <span className="text-[10px] font-bold text-brand-600 dark:text-brand-400">
+                      {(p.author.username || 'A')[0].toUpperCase()}
+                    </span>
+                  </div>
+                  <span>{p.author.username || 'Anonymous'}</span>
+                </Link>
+              )}
+              <span>
+                Published on {formatDate(p.created_at)}
+                {p.updated_at !== p.created_at &&
+                  ` · Updated ${formatDate(p.updated_at)}`}
+              </span>
+            </div>
           </div>
 
           {/* Prompt 文本 */}
@@ -209,6 +232,15 @@ export default async function PromptDetailPage({ params }: Props) {
             <div className="space-y-3">
               <CopyButton text={p.content} label="Copy Prompt" promptId={p.id} />
               <FavoriteButton promptId={p.id} />
+
+              {/* 评分 */}
+              <div className="pt-3 border-t border-slate-200 dark:border-dark-700">
+                <RatingStars
+                  promptId={p.id}
+                  initialAvgRating={promptStats?.avg_rating || 0}
+                  initialRatingCount={promptStats?.rating_count || 0}
+                />
+              </div>
 
               {p.model_name && (
                 <div className="pt-3 border-t border-slate-200 dark:border-dark-700">

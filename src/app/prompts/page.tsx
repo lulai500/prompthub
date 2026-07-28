@@ -45,7 +45,7 @@ export default async function PromptsPage({
   // 构建查询
   let query = supabase
     .from('prompts')
-    .select('*, category:categories(*)', { count: 'exact' })
+    .select('*, category:categories(*), author:profiles_public(*)', { count: 'exact' })
     .eq('is_published', true);
 
   // 关键词搜索
@@ -92,8 +92,30 @@ export default async function PromptsPage({
     .order('sort_order', { ascending: true });
 
   const totalPages = Math.ceil((count || 0) / limit);
-  const results: Prompt[] = prompts || [];
+  const allPrompts: Prompt[] = prompts || [];
   const cats: Category[] = categories || [];
+
+  // 预取评分统计
+  const promptIds = allPrompts.map((p) => p.id);
+  let statsMap: Record<number, { avg_rating: number; rating_count: number; favorite_count: number }> = {};
+  if (promptIds.length > 0) {
+    const { data: statsData } = await supabase
+      .from('prompt_stats')
+      .select('*')
+      .in('prompt_id', promptIds);
+    if (statsData) {
+      for (const s of statsData) {
+        statsMap[s.prompt_id] = s;
+      }
+    }
+  }
+
+  const results: Prompt[] = allPrompts.map((p) => ({
+    ...p,
+    avg_rating: statsMap[p.id]?.avg_rating || 0,
+    rating_count: statsMap[p.id]?.rating_count || 0,
+    favorite_count: statsMap[p.id]?.favorite_count || 0,
+  }));
 
   /** 构建排序链接的查询参数 */
   function buildSortUrl(targetSort: string) {

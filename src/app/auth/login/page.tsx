@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Mail, Lock, Eye, EyeOff, LogIn } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import OAuthButtons from '@/components/auth/OAuthButtons';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -144,6 +145,9 @@ export default function LoginPage() {
             )}
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
+
+          {/* OAuth 登录 */}
+          <OAuthButtons />
 
           {/* 跳转注册 */}
           <p className="text-center text-sm text-slate-500 dark:text-slate-400">

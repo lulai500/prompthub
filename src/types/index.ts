@@ -41,10 +41,35 @@ export interface Prompt {
   tags: string[];
   usage_count: number;
   is_published: boolean;
+  author_id?: string | null;
   created_at: string;
   updated_at: string;
   // 关联数据（通过 JOIN 查询获得）
   category?: Category | null;
+  author?: ProfilePublic | null;
+  // 聚合统计（来自 prompt_stats 视图）
+  favorite_count?: number;
+  avg_rating?: number;
+  rating_count?: number;
+}
+
+/** 用户公开信息（脱敏） */
+export interface ProfilePublic {
+  id: string;
+  username: string | null;
+  avatar_url: string | null;
+  bio: string | null;
+  created_at: string;
+}
+
+/** 评分 */
+export interface Rating {
+  id: number;
+  user_id: string;
+  prompt_id: number;
+  rating: number; // 1-5
+  created_at: string;
+  updated_at: string;
 }
 
 /** 收藏文件夹 */

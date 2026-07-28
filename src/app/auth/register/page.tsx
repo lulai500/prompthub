@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Mail, Lock, User, Eye, EyeOff, UserPlus, Check, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import OAuthButtons from '@/components/auth/OAuthButtons';
 
 /** 密码规则校验 */
 function getPasswordChecks(password: string) {
@@ -252,6 +253,9 @@ export default function RegisterPage() {
             )}
             {loading ? 'Creating account...' : 'Create Account'}
           </button>
+
+          {/* OAuth 注册 */}
+          <OAuthButtons />
 
           {/* 跳转登录 */}
           <p className="text-center text-sm text-slate-500 dark:text-slate-400">

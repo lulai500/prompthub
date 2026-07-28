@@ -138,6 +138,14 @@ export default function Header() {
               >
                 About
               </Link>
+              {user && (
+                <Link
+                  href="/submit"
+                  className="px-3 py-2 rounded-lg text-sm font-medium bg-brand-600 text-white hover:bg-brand-700 transition-colors"
+                >
+                  + Submit
+                </Link>
+              )}
             </nav>
           </div>
 

@@ -4,7 +4,7 @@
 // ============================================================
 
 import Link from 'next/link';
-import { Copy, Tag } from 'lucide-react';
+import { Copy, Tag, User, Star } from 'lucide-react';
 import type { Prompt } from '@/types';
 import { truncateText, formatDate } from '@/lib/utils';
 
@@ -63,7 +63,22 @@ export default function PromptCard({ prompt }: PromptCardProps) {
 
       {/* 底部信息 */}
       <div className="flex items-center justify-between text-xs text-slate-400 dark:text-slate-500">
-        <span>{formatDate(prompt.created_at)}</span>
+        <div className="flex items-center gap-3">
+          {prompt.author ? (
+            <span className="flex items-center gap-1">
+              <User className="w-3 h-3" />
+              {prompt.author.username || 'Anonymous'}
+            </span>
+          ) : (
+            <span>{formatDate(prompt.created_at)}</span>
+          )}
+          {(prompt.avg_rating ?? 0) > 0 && (
+            <span className="flex items-center gap-0.5">
+              <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
+              {Number(prompt.avg_rating).toFixed(1)}
+            </span>
+          )}
+        </div>
         {prompt.usage_count > 0 ? (
           <span className="flex items-center gap-1">
             <Copy className="w-3 h-3" />
