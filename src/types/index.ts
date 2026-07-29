@@ -37,6 +37,7 @@ export interface Prompt {
   category_id: number | null;
   model_name: string | null;
   tips: string | null;
+  example_output: string | null;
   screenshot_urls: string[];
   tags: string[];
   usage_count: number;

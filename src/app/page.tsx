@@ -11,11 +11,11 @@ import {
   Bot,
   Sparkles,
   Search,
-  Copy,
   Heart,
   FolderOpen,
 } from 'lucide-react';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+import PromptCard from '@/components/prompts/PromptCard';
 import type { Category, Prompt } from '@/types';
 
 export const dynamic = 'force-dynamic'; // 禁止静态缓存，确保数据实时
@@ -195,44 +195,7 @@ export default async function HomePage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {prompts.map((prompt) => (
-              <Link
-                key={prompt.id}
-                href={`/prompts/${prompt.slug || prompt.id}`}
-                className="card p-5 group block"
-              >
-                {prompt.category && (
-                  <span className="badge-primary mb-3 inline-block text-xs">
-                    {prompt.category.name}
-                  </span>
-                )}
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
-                  {prompt.title}
-                </h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mb-3 line-clamp-2">
-                  {prompt.description}
-                </p>
-                {prompt.tags && prompt.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mb-3">
-                    {prompt.tags.slice(0, 3).map((tag) => (
-                      <span key={tag} className="badge-default text-xs">
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
-                <div className="flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
-                  {prompt.usage_count > 0 ? (
-                    <>
-                      <Copy className="w-3 h-3" />
-                      {prompt.usage_count} use{prompt.usage_count !== 1 ? 's' : ''}
-                    </>
-                  ) : (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
-                      New
-                    </span>
-                  )}
-                </div>
-              </Link>
+              <PromptCard key={prompt.id} prompt={prompt} />
             ))}
           </div>
 

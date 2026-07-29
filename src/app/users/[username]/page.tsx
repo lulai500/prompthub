@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { ArrowLeft, User, Calendar, Sparkles } from 'lucide-react';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { formatDate } from '@/lib/utils';
+import PromptCard from '@/components/prompts/PromptCard';
 import type { ProfilePublic, Prompt } from '@/types';
 
 export const dynamic = 'force-dynamic';
@@ -98,29 +99,7 @@ export default async function UserProfilePage({ params }: Props) {
       {userPrompts.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {userPrompts.map((prompt) => (
-            <Link
-              key={prompt.id}
-              href={`/prompts/${prompt.slug || prompt.id}`}
-              className="card p-4 group block"
-            >
-              {prompt.category && (
-                <span className="badge-primary mb-2 inline-block text-xs">
-                  {prompt.category.name}
-                </span>
-              )}
-              <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-1.5 group-hover:text-brand-600 transition-colors line-clamp-1">
-                {prompt.title}
-              </h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mb-2 line-clamp-2">
-                {prompt.description || prompt.content.slice(0, 100)}
-              </p>
-              <div className="flex items-center justify-between text-xs text-slate-400 dark:text-slate-500">
-                <span>{formatDate(prompt.created_at)}</span>
-                {prompt.usage_count > 0 && (
-                  <span>{prompt.usage_count} use{prompt.usage_count !== 1 ? 's' : ''}</span>
-                )}
-              </div>
-            </Link>
+            <PromptCard key={prompt.id} prompt={prompt} />
           ))}
         </div>
       ) : (

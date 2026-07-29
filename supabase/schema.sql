@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS public.prompts (
   author_id UUID REFERENCES auth.users(id) ON DELETE SET NULL, -- 提交者（NULL = 匿名/种子数据）
   model_name TEXT,                                           -- 适配大模型名称，如 "GPT-4 / Claude 3.5"
   tips TEXT,                                                 -- 调参建议（Markdown 格式）
+  example_output TEXT,                                       -- 模拟 AI 输出示例（Markdown 格式），展示使用该提示词后的预期效果
   screenshot_urls TEXT[] DEFAULT '{}',                       -- 使用案例截图 URL 数组
   tags TEXT[] DEFAULT '{}',                                  -- 标签数组
   usage_count INT DEFAULT 0,                                 -- 被使用/复制次数

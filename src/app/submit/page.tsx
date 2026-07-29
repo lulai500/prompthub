@@ -37,6 +37,7 @@ export default function SubmitPage() {
   const [categoryId, setCategoryId] = useState('');
   const [modelName, setModelName] = useState('');
   const [tips, setTips] = useState('');
+  const [exampleOutput, setExampleOutput] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
 
@@ -108,6 +109,7 @@ export default function SubmitPage() {
         category_id: categoryId ? parseInt(categoryId) : null,
         model_name: modelName.trim() || null,
         tips: tips.trim() || null,
+        example_output: exampleOutput.trim() || null,
         tags,
         author_id: user.id,
         is_published: true,
@@ -277,6 +279,23 @@ export default function SubmitPage() {
               className="input min-h-[100px] font-mono text-sm"
               rows={5}
             />
+          </div>
+
+          {/* 示例输出 */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+              Example Output
+            </label>
+            <textarea
+              value={exampleOutput}
+              onChange={(e) => setExampleOutput(e.target.value)}
+              placeholder="Paste an example of what the AI outputs when using this prompt. This helps others see the prompt's value at a glance."
+              className="input min-h-[120px] font-mono text-sm"
+              rows={6}
+            />
+            <p className="text-xs text-slate-400 mt-1">
+              Optional. Show the expected result to help others understand this prompt&apos;s value.
+            </p>
           </div>
 
           {/* 标签 */}

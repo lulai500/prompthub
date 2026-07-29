@@ -6,7 +6,7 @@
 
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Tag, Monitor, Lightbulb, Image } from 'lucide-react';
+import { ArrowLeft, Tag, Monitor, Lightbulb, Image, Eye } from 'lucide-react';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { formatDate } from '@/lib/utils';
 import CopyButton from '@/components/prompts/CopyButton';
@@ -157,6 +157,23 @@ export default async function PromptDetailPage({ params }: Props) {
               </code>
             </pre>
           </div>
+
+          {/* 示例输出 */}
+          {p.example_output && (
+            <div className="card p-6">
+              <div className="flex items-center gap-2 mb-3">
+                <Eye className="w-5 h-5 text-green-500" />
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                  Example Output
+                </h2>
+              </div>
+              <div className="p-4 rounded-xl bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800">
+                <div className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
+                  {p.example_output}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* 调参建议 */}
           {p.tips && (

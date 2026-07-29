@@ -4,10 +4,11 @@
 // ============================================================
 
 import Link from 'next/link';
-import { Search, SlidersHorizontal, Copy, X, ArrowUpDown } from 'lucide-react';
+import { Search, SlidersHorizontal, X, ArrowUpDown } from 'lucide-react';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { formatDate } from '@/lib/utils';
 import TagLinks from '@/components/prompts/TagLinks';
+import PromptCard from '@/components/prompts/PromptCard';
 import type { Category, Prompt } from '@/types';
 
 export const dynamic = 'force-dynamic';
@@ -266,37 +267,7 @@ export default async function PromptsPage({
               {/* 卡片网格：响应式 1→2→3 列 */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {results.map((prompt) => (
-                  <Link
-                    key={prompt.id}
-                    href={`/prompts/${prompt.slug || prompt.id}`}
-                    className="card p-4 group block"
-                  >
-                    {prompt.category && (
-                      <span className="badge-primary mb-2 inline-block text-xs">
-                        {prompt.category.name}
-                      </span>
-                    )}
-                    <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-1.5 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors line-clamp-1">
-                      {prompt.title}
-                    </h3>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-2 line-clamp-2">
-                      {prompt.description || prompt.content.slice(0, 120)}
-                    </p>
-                    <TagLinks tags={prompt.tags || []} />
-                    <div className="flex items-center justify-between text-xs text-slate-400 dark:text-slate-500 mt-2">
-                      <span>{formatDate(prompt.created_at)}</span>
-                      {prompt.usage_count > 0 ? (
-                        <span className="flex items-center gap-1">
-                          <Copy className="w-3 h-3" />
-                          {prompt.usage_count}
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
-                          New
-                        </span>
-                      )}
-                    </div>
-                  </Link>
+                  <PromptCard key={prompt.id} prompt={prompt} />
                 ))}
               </div>
 
