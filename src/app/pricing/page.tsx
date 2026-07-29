@@ -47,7 +47,7 @@ export default function PricingPage() {
         <div className="card p-8 ring-2 ring-brand-500 dark:ring-brand-400 shadow-lg relative overflow-hidden">
           {/* 装饰角标 */}
           <div className="absolute top-0 right-0 bg-brand-600 text-white text-xs font-semibold px-4 py-1 rounded-bl-lg">
-            Recommended
+            Free Forever
           </div>
 
           <div className="flex items-center gap-3 mb-4">

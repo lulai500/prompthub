@@ -17,6 +17,7 @@ import {
   Settings,
   LogIn,
   UserPlus,
+  MessageSquare,
 } from 'lucide-react';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 import { createClient } from '@/lib/supabase/client';
@@ -137,6 +138,12 @@ export default function Header() {
                 className="px-3 py-2 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-dark-700 transition-colors"
               >
                 About
+              </Link>
+              <Link
+                href="/feedback"
+                className="px-3 py-2 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-dark-700 transition-colors"
+              >
+                Feedback
               </Link>
               {user && (
                 <Link
@@ -304,6 +311,13 @@ export default function Header() {
                 onClick={() => setMobileOpen(false)}
               >
                 About
+              </Link>
+              <Link
+                href="/feedback"
+                className="px-4 py-2.5 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-dark-700"
+                onClick={() => setMobileOpen(false)}
+              >
+                Feedback
               </Link>
               {/* 移动端搜索 */}
               <form onSubmit={handleSearch} className="px-4 py-2">

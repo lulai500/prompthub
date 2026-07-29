@@ -7,7 +7,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Mail, Lock, User, Eye, EyeOff, UserPlus, Check, X } from 'lucide-react';
+import { Mail, Lock, User, Eye, EyeOff, UserPlus, Check, X, ShieldCheck } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import OAuthButtons from '@/components/auth/OAuthButtons';
 
@@ -21,6 +21,26 @@ function getPasswordChecks(password: string) {
   ];
 }
 
+/** 计算密码强度百分比 (0–100) */
+function getPasswordStrength(password: string): number {
+  let score = 0;
+  if (password.length >= 8) score += 25;
+  if (password.length >= 12) score += 10;
+  if (/[A-Z]/.test(password)) score += 20;
+  if (/[a-z]/.test(password)) score += 15;
+  if (/[0-9]/.test(password)) score += 15;
+  if (/[^A-Za-z0-9]/.test(password)) score += 15;
+  return Math.min(100, score);
+}
+
+/** 密码强度标签 */
+function getStrengthLabel(score: number): { text: string; color: string } {
+  if (score >= 80) return { text: 'Strong', color: 'bg-green-500' };
+  if (score >= 55) return { text: 'Medium', color: 'bg-yellow-500' };
+  if (score >= 30) return { text: 'Weak', color: 'bg-orange-500' };
+  return { text: 'Too weak', color: 'bg-red-500' };
+}
+
 export default function RegisterPage() {
   const router = useRouter();
   const supabase = createClient();
@@ -30,6 +50,7 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -122,7 +143,7 @@ export default function RegisterPage() {
               htmlFor="username"
               className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5"
             >
-              Username
+              Username <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -149,7 +170,7 @@ export default function RegisterPage() {
               htmlFor="email"
               className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5"
             >
-              Email address
+              Email address <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -171,7 +192,7 @@ export default function RegisterPage() {
               htmlFor="password"
               className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5"
             >
-              Password
+              Password <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -199,25 +220,40 @@ export default function RegisterPage() {
             </div>
             {/* 密码强度指示器 */}
             {password.length > 0 && (
-              <div className="mt-2 space-y-1">
-                {getPasswordChecks(password).map((check) => (
-                  <div key={check.label} className="flex items-center gap-2 text-xs">
-                    {check.passed ? (
-                      <Check className="w-3 h-3 text-green-500 shrink-0" />
-                    ) : (
-                      <X className="w-3 h-3 text-slate-300 dark:text-slate-600 shrink-0" />
-                    )}
-                    <span
-                      className={
-                        check.passed
-                          ? 'text-green-600 dark:text-green-400'
-                          : 'text-slate-400 dark:text-slate-500'
-                      }
-                    >
-                      {check.label}
-                    </span>
+              <div className="mt-2 space-y-2">
+                {/* 强度条 */}
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-1.5 rounded-full bg-slate-200 dark:bg-dark-700 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-300 ${getStrengthLabel(getPasswordStrength(password)).color}`}
+                      style={{ width: `${getPasswordStrength(password)}%` }}
+                    />
                   </div>
-                ))}
+                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400 min-w-[4.5rem] text-right">
+                    {getStrengthLabel(getPasswordStrength(password)).text}
+                  </span>
+                </div>
+                {/* 规则清单 */}
+                <div className="space-y-1">
+                  {getPasswordChecks(password).map((check) => (
+                    <div key={check.label} className="flex items-center gap-2 text-xs">
+                      {check.passed ? (
+                        <Check className="w-3 h-3 text-green-500 shrink-0" />
+                      ) : (
+                        <X className="w-3 h-3 text-slate-300 dark:text-slate-600 shrink-0" />
+                      )}
+                      <span
+                        className={
+                          check.passed
+                            ? 'text-green-600 dark:text-green-400'
+                            : 'text-slate-400 dark:text-slate-500'
+                        }
+                      >
+                        {check.label}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -228,20 +264,44 @@ export default function RegisterPage() {
               htmlFor="confirmPassword"
               className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5"
             >
-              Confirm password
+              Confirm password <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 id="confirmPassword"
-                type="password"
+                type={showConfirmPassword ? 'text' : 'password'}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Re-enter your password"
-                className="input pl-9"
+                className={`input pl-9 pr-10 ${confirmPassword.length > 0 ? (password === confirmPassword ? 'ring-1 ring-green-400 dark:ring-green-600' : 'ring-1 ring-red-400 dark:ring-red-600') : ''}`}
                 required
               />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-8 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+              >
+                {showConfirmPassword ? (
+                  <EyeOff className="w-4 h-4" />
+                ) : (
+                  <Eye className="w-4 h-4" />
+                )}
+              </button>
+              {/* 实时匹配状态图标 */}
+              {confirmPassword.length > 0 && (
+                <span className="absolute right-3 top-1/2 -translate-y-1/2">
+                  {password === confirmPassword ? (
+                    <ShieldCheck className="w-4 h-4 text-green-500" />
+                  ) : (
+                    <X className="w-4 h-4 text-red-400" />
+                  )}
+                </span>
+              )}
             </div>
+            {confirmPassword.length > 0 && password !== confirmPassword && (
+              <p className="text-xs text-red-500 mt-1">Passwords do not match</p>
+            )}
           </div>
 
           {/* 提交 */}
