@@ -64,7 +64,7 @@ function formatStat(count: number): string {
 
 export default async function AboutPage() {
   const supabase = createServerSupabaseClient();
-  const githubUrl = process.env.NEXT_PUBLIC_GITHUB_URL || 'https://github.com';
+  const githubUrl = process.env.NEXT_PUBLIC_GITHUB_URL || 'https://github.com/lulai500/prompthub';
 
   // 获取真实统计数据
   const [promptResult, categoryResult, userResult] = await Promise.all([

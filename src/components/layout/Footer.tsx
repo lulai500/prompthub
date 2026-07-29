@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { MessageSquare } from 'lucide-react';
 
 // 开源仓库链接（可通过环境变量配置）
-const githubUrl = process.env.NEXT_PUBLIC_GITHUB_URL || 'https://github.com';
+const githubUrl = process.env.NEXT_PUBLIC_GITHUB_URL || 'https://github.com/lulai500/prompthub';
 
 export default function Footer() {
   return (
