@@ -45,7 +45,7 @@ export default async function PromptsPage({
   // 构建查询
   let query = supabase
     .from('prompts')
-    .select('*, category:categories(*), author:profiles_public(*)', { count: 'exact' })
+    .select('*, category:categories(*)', { count: 'exact' })
     .eq('is_published', true);
 
   // 关键词搜索
@@ -164,6 +164,32 @@ export default async function PromptsPage({
                 Filters
               </h3>
             </div>
+
+            {/* 关键词搜索 */}
+            <form action="/prompts" method="GET" className="mb-4">
+              {categorySlug && (
+                <input type="hidden" name="category" value={categorySlug} />
+              )}
+              {tagFilter && (
+                <input type="hidden" name="tag" value={tagFilter} />
+              )}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  name="search"
+                  defaultValue={search}
+                  placeholder="Search prompts..."
+                  className="w-full pl-9 pr-3 py-2 rounded-lg text-sm
+                             bg-white dark:bg-dark-800
+                             border border-slate-300 dark:border-dark-600
+                             text-slate-900 dark:text-slate-100
+                             placeholder:text-slate-400
+                             focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent
+                             transition-colors duration-200"
+                />
+              </div>
+            </form>
 
             {/* 分类 */}
             <div className="mb-4">

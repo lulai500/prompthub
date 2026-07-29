@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS public.prompts (
   description TEXT,                                          -- 简短描述
   content TEXT NOT NULL,                                     -- 完整 Prompt 文本
   category_id INT REFERENCES public.categories(id) ON DELETE SET NULL,
+  author_id UUID REFERENCES auth.users(id) ON DELETE SET NULL, -- 提交者（NULL = 匿名/种子数据）
   model_name TEXT,                                           -- 适配大模型名称，如 "GPT-4 / Claude 3.5"
   tips TEXT,                                                 -- 调参建议（Markdown 格式）
   screenshot_urls TEXT[] DEFAULT '{}',                       -- 使用案例截图 URL 数组
@@ -62,12 +63,26 @@ CREATE TABLE IF NOT EXISTS public.prompts (
 
 -- 索引：加速搜索和筛选
 CREATE INDEX IF NOT EXISTS idx_prompts_category ON public.prompts(category_id);
+CREATE INDEX IF NOT EXISTS idx_prompts_author ON public.prompts(author_id);
 CREATE INDEX IF NOT EXISTS idx_prompts_tags ON public.prompts USING GIN(tags);
 CREATE INDEX IF NOT EXISTS idx_prompts_title_search ON public.prompts USING GIN(to_tsvector('english', title || ' ' || COALESCE(description, '')));
 
 ALTER TABLE public.prompts ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "公开读取已发布提示词" ON public.prompts
   FOR SELECT USING (is_published = true);                    -- 所有人可读已发布的提示词
+CREATE POLICY "用户提交提示词" ON public.prompts
+  FOR INSERT WITH CHECK (auth.uid() = author_id);            -- 登录用户可以提交
+CREATE POLICY "用户修改自己的提示词" ON public.prompts
+  FOR UPDATE USING (auth.uid() = author_id) WITH CHECK (auth.uid() = author_id);
+CREATE POLICY "用户删除自己的提示词" ON public.prompts
+  FOR DELETE USING (auth.uid() = author_id);
+
+
+-- 三-B、用户公开信息视图（脱敏 profiles 表，用于 JOIN 显示作者信息）
+-- 应用程序的所有作者查询均通过此视图，避免暴露敏感字段
+CREATE OR REPLACE VIEW public.profiles_public AS
+  SELECT id, username, avatar_url, bio, created_at
+  FROM public.profiles;
 
 
 -- 四、收藏文件夹表
@@ -117,6 +132,58 @@ CREATE TABLE IF NOT EXISTS public.orders (
 ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "用户读取自己的订单" ON public.orders
   FOR SELECT USING (auth.uid() = user_id);                   -- 用户只能看自己的订单
+
+
+-- 七、反馈表
+-- 用户提交的建议、Bug 报告、功能请求
+CREATE TABLE IF NOT EXISTS public.feedback (
+  id SERIAL PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,   -- NULL = 匿名反馈
+  type TEXT NOT NULL CHECK (type IN ('suggestion', 'bug_report', 'feature_request', 'other')),
+  title TEXT NOT NULL,
+  message TEXT NOT NULL,
+  email TEXT,                                                  -- 可选的联系邮箱
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.feedback ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "所有人可提交反馈" ON public.feedback
+  FOR INSERT WITH CHECK (true);
+CREATE POLICY "用户查看自己的反馈" ON public.feedback
+  FOR SELECT USING (auth.uid() = user_id OR user_id IS NULL);
+
+
+-- 八、评分表
+-- 用户对提示词的 1-5 星评分
+CREATE TABLE IF NOT EXISTS public.ratings (
+  id SERIAL PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  prompt_id INT NOT NULL REFERENCES public.prompts(id) ON DELETE CASCADE,
+  rating INT NOT NULL CHECK (rating >= 1 AND rating <= 5),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, prompt_id)                                   -- 每个用户对每个提示词只能评一次
+);
+
+ALTER TABLE public.ratings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "公开读取评分" ON public.ratings
+  FOR SELECT USING (true);
+CREATE POLICY "用户管理自己的评分" ON public.ratings
+  FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+
+-- 九、提示词统计视图
+-- 聚合评分和收藏数据，避免在应用层做多次查询
+CREATE OR REPLACE VIEW public.prompt_stats AS
+  SELECT
+    p.id AS prompt_id,
+    COALESCE(AVG(r.rating), 0) AS avg_rating,
+    COUNT(r.id) AS rating_count,
+    COUNT(f.id) AS favorite_count
+  FROM public.prompts p
+  LEFT JOIN public.ratings r ON r.prompt_id = p.id
+  LEFT JOIN public.favorites f ON f.prompt_id = p.id
+  GROUP BY p.id;
 
 
 -- ============================================================

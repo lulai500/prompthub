@@ -5,6 +5,9 @@
 import Link from 'next/link';
 import { MessageSquare } from 'lucide-react';
 
+// 开源仓库链接（可通过环境变量配置）
+const githubUrl = process.env.NEXT_PUBLIC_GITHUB_URL || 'https://github.com';
+
 export default function Footer() {
   return (
     <footer className="border-t border-slate-200 dark:border-dark-700 bg-slate-50 dark:bg-dark-950 mt-auto">
@@ -42,7 +45,7 @@ export default function Footer() {
               Feedback
             </Link>
             <a
-              href="https://github.com"
+              href={githubUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="hover:text-brand-600 dark:hover:text-brand-400 transition-colors"

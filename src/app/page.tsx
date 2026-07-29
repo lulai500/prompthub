@@ -41,7 +41,7 @@ export default async function HomePage() {
       const limit = idx < remainder ? perCategory + 1 : perCategory;
       const { data } = await supabase
         .from('prompts')
-        .select('*, category:categories(*), author:profiles_public(*)')
+        .select('*, category:categories(*)')
         .eq('category_id', cat.id)
         .eq('is_published', true)
         .order('usage_count', { ascending: false })
@@ -56,7 +56,7 @@ export default async function HomePage() {
       const existingIds = new Set(popularPrompts.map((p) => p.id));
       const { data: fillers } = await supabase
         .from('prompts')
-        .select('*, category:categories(*), author:profiles_public(*)')
+        .select('*, category:categories(*)')
         .eq('is_published', true)
         .order('usage_count', { ascending: false })
         .limit(10);

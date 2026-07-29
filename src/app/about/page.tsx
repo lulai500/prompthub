@@ -47,8 +47,24 @@ const features = [
   },
 ];
 
+/** 格式化统计数据：大数取整加 "+"，小值显示精确数字 */
+function formatStat(count: number): string {
+  if (count >= 100) {
+    // 100+ → 向下取整到十位
+    const rounded = Math.floor(count / 10) * 10;
+    return `${rounded.toLocaleString()}+`;
+  }
+  if (count >= 20) {
+    // 20~99 → 显示精确值 + "+"
+    return `${count.toLocaleString()}+`;
+  }
+  // < 20 → 显示精确数字，避免 "3+ members" 这种尴尬
+  return count.toLocaleString();
+}
+
 export default async function AboutPage() {
   const supabase = createServerSupabaseClient();
+  const githubUrl = process.env.NEXT_PUBLIC_GITHUB_URL || 'https://github.com';
 
   // 获取真实统计数据
   const [promptResult, categoryResult, userResult] = await Promise.all([
@@ -58,9 +74,9 @@ export default async function AboutPage() {
   ]);
 
   const stats = [
-    { label: 'Prompts', value: (promptResult.count || 0).toLocaleString() },
-    { label: 'Categories', value: (categoryResult.count || 0).toLocaleString() },
-    { label: 'Community Members', value: (userResult.count || 0).toLocaleString() },
+    { label: 'Prompts', value: formatStat(promptResult.count || 0) },
+    { label: 'Categories', value: formatStat(categoryResult.count || 0) },
+    { label: 'Community Members', value: formatStat(userResult.count || 0) },
   ];
 
   return (
@@ -81,7 +97,7 @@ export default async function AboutPage() {
         {stats.map((stat) => (
           <div key={stat.label} className="card p-5 text-center">
             <p className="text-2xl sm:text-3xl font-extrabold text-brand-600 dark:text-brand-400">
-              {stat.value}+
+              {stat.value}
             </p>
             <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
               {stat.label}
@@ -135,7 +151,7 @@ export default async function AboutPage() {
               Contact Us
             </a>
             <a
-              href="https://github.com"
+              href={githubUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="btn-secondary inline-flex items-center gap-2"
