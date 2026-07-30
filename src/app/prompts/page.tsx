@@ -46,7 +46,7 @@ export default async function PromptsPage({
   // 构建查询
   let query = supabase
     .from('prompts')
-    .select('*, category:categories(*)', { count: 'exact' })
+    .select('*, category:categories(*), author:profiles_public(*)', { count: 'exact' })
     .eq('is_published', true);
 
   // 关键词搜索

@@ -28,7 +28,7 @@ export default async function PromptDetailPage({ params }: Props) {
   const isNumericId = /^\d+$/.test(id);
   let query = supabase
     .from('prompts')
-    .select('*, category:categories(*)')
+    .select('*, category:categories(*), author:profiles_public(*)')
     .eq('is_published', true);
 
   if (isNumericId) {
