@@ -112,7 +112,7 @@ export default function SubmitPage() {
         example_output: exampleOutput.trim() || null,
         tags,
         author_id: user.id,
-        is_published: true,
+        is_published: false, // Requires admin review before publishing
       })
       .select('id, slug')
       .single();
@@ -123,8 +123,8 @@ export default function SubmitPage() {
       return;
     }
 
-    // 跳转到新创建的提示词详情页
-    router.push(`/prompts/${data.slug || data.id}`);
+    // Redirect to prompts list with success message
+    router.push('/prompts?submitted=1');
     router.refresh();
   }
 

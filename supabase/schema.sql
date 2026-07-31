@@ -71,6 +71,8 @@ CREATE INDEX IF NOT EXISTS idx_prompts_title_search ON public.prompts USING GIN(
 ALTER TABLE public.prompts ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "公开读取已发布提示词" ON public.prompts
   FOR SELECT USING (is_published = true);                    -- 所有人可读已发布的提示词
+CREATE POLICY "作者读取自己的提示词" ON public.prompts
+  FOR SELECT USING (auth.uid() = author_id);                 -- 作者可读自己未发布的提示词
 CREATE POLICY "用户提交提示词" ON public.prompts
   FOR INSERT WITH CHECK (auth.uid() = author_id);            -- 登录用户可以提交
 CREATE POLICY "用户修改自己的提示词" ON public.prompts

@@ -38,7 +38,8 @@ export default function LoginPage() {
     });
 
     if (loginError) {
-      setError(loginError.message);
+      // Generic error message to prevent email enumeration
+      setError('Invalid email or password. Please try again.');
       setLoading(false);
     } else {
       router.refresh();

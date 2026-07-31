@@ -86,7 +86,12 @@ export default function RegisterPage() {
     });
 
     if (signUpError) {
-      setError(signUpError.message);
+      // Generic error message to prevent email enumeration
+      if (signUpError.message?.includes('already registered') || signUpError.message?.includes('already exists')) {
+        setError('An account with this email already exists. Please sign in instead.');
+      } else {
+        setError('Registration failed. Please check your information and try again.');
+      }
       setLoading(false);
       return;
     }

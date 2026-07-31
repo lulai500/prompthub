@@ -1,19 +1,104 @@
 // ============================================================
-// PromptHub - Next.js 中间件
-// 用于自动刷新 Supabase 认证 session
-// 每个请求经过中间件时，会检查并刷新过期 token
+// PromptHub — Next.js Middleware
+// - Supabase auth session refresh
+// - Rate limiting on sensitive routes
 // ============================================================
 
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
+// ---- In-memory rate limiter (per-function-instance) ----
+interface RateLimitEntry {
+  count: number;
+  resetAt: number;
+}
+const rateLimitStore = new Map<string, RateLimitEntry>();
+let lastCleanup = 0;
+
+function checkRateLimit(
+  key: string,
+  maxRequests: number,
+  windowMs: number
+): { allowed: boolean; remaining: number; resetAt: number } {
+  const now = Date.now();
+
+  // Periodic cleanup of expired entries
+  if (now - lastCleanup > 60_000) {
+    lastCleanup = now;
+    rateLimitStore.forEach((v, k) => {
+      if (now > v.resetAt) rateLimitStore.delete(k);
+    });
+  }
+
+  const entry = rateLimitStore.get(key);
+  if (!entry || now > entry.resetAt) {
+    const newEntry: RateLimitEntry = { count: 1, resetAt: now + windowMs };
+    rateLimitStore.set(key, newEntry);
+    return { allowed: true, remaining: maxRequests - 1, resetAt: newEntry.resetAt };
+  }
+
+  entry.count++;
+  if (entry.count > maxRequests) {
+    return { allowed: false, remaining: 0, resetAt: entry.resetAt };
+  }
+  return { allowed: true, remaining: maxRequests - entry.count, resetAt: entry.resetAt };
+}
+
+// Rate limit presets
+const LIMITS: Record<string, { max: number; windowMs: number }> = {
+  '/auth/login':        { max: 15, windowMs: 60_000 },     // 15 req/min
+  '/auth/register':     { max: 10, windowMs: 60_000 },     // 10 req/min
+  '/auth/reset-password': { max: 5,  windowMs: 300_000 },   // 5 req/5min
+  '/feedback':          { max: 10, windowMs: 300_000 },    // 10 req/5min
+  '/submit':            { max: 15, windowMs: 300_000 },    // 15 req/5min
+  '/dashboard/settings': { max: 20, windowMs: 60_000 },    // 20 req/min
+};
+
+function getClientIP(request: NextRequest): string {
+  return request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    || request.headers.get('x-real-ip')
+    || 'unknown';
+}
+
 export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
   let response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
+    request: { headers: request.headers },
   });
 
+  // ---- Rate limiting for sensitive routes ----
+  const limit = LIMITS[pathname];
+  if (limit) {
+    const ip = getClientIP(request);
+    const key = `${ip}:${pathname}`;
+    const result = checkRateLimit(key, limit.max, limit.windowMs);
+
+    // Always include rate-limit headers
+    response.headers.set('X-RateLimit-Limit', String(limit.max));
+    response.headers.set('X-RateLimit-Remaining', String(Math.max(0, result.remaining)));
+    response.headers.set('X-RateLimit-Reset', String(Math.ceil(result.resetAt / 1000)));
+
+    if (!result.allowed) {
+      return new NextResponse(
+        JSON.stringify({
+          error: 'Too many requests. Please try again later.',
+          retryAfter: Math.ceil((result.resetAt - Date.now()) / 1000),
+        }),
+        {
+          status: 429,
+          headers: {
+            'Content-Type': 'application/json',
+            'Retry-After': String(Math.ceil((result.resetAt - Date.now()) / 1000)),
+            'X-RateLimit-Limit': String(limit.max),
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset': String(Math.ceil(result.resetAt / 1000)),
+          },
+        }
+      );
+    }
+  }
+
+  // ---- Supabase auth session refresh ----
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -23,46 +108,22 @@ export async function middleware(request: NextRequest) {
           return request.cookies.get(name)?.value;
         },
         set(name: string, value: string, options: CookieOptions) {
-          // 中间件设置 cookie 到 response
-          response.cookies.set({
-            name,
-            value,
-            ...options,
-          });
+          response.cookies.set({ name, value, ...options });
         },
         remove(name: string, options: CookieOptions) {
-          response.cookies.set({
-            name,
-            value: '',
-            ...options,
-            maxAge: 0,
-          });
+          response.cookies.set({ name, value: '', ...options, maxAge: 0 });
         },
       },
     }
   );
 
-  // 刷新 session（如果 token 即将过期）
-  // 这确保用户登录状态在不同页面间保持一致
   await supabase.auth.getSession();
 
   return response;
 }
 
-/**
- * 中间件匹配规则
- * 排除静态资源和 API 路由（API 有自己的 auth 处理）
- */
 export const config = {
   matcher: [
-    /*
-     * Match all paths except:
-     * - _next/static (static files)
-     * - _next/image (image optimization)
-     * - favicon.ico
-     * - public directory files
-     * - API routes (api/) — these handle their own auth
-     */
     '/((?!_next/static|_next/image|favicon.ico|api/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };
