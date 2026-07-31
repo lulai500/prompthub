@@ -19,6 +19,11 @@ interface PromptCardProps {
 export default function PromptCard({ prompt }: PromptCardProps) {
   const [previewOpen, setPreviewOpen] = useState(false);
 
+  // Only show "New" badge for prompts created within the last 7 days
+  const isRecent =
+    prompt.usage_count === 0 &&
+    (Date.now() - new Date(prompt.created_at).getTime()) < 7 * 24 * 60 * 60 * 1000;
+
   return (
     <>
       <div className="card p-5 group block relative">
@@ -93,11 +98,11 @@ export default function PromptCard({ prompt }: PromptCardProps) {
                 <Copy className="w-3 h-3" />
                 {prompt.usage_count} use{prompt.usage_count !== 1 ? 's' : ''}
               </span>
-            ) : (
+            ) : isRecent ? (
               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
                 New
               </span>
-            )}
+            ) : null}
           </div>
         </Link>
 
