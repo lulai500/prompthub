@@ -1,13 +1,16 @@
 // ============================================================
 // POST /api/admin/translate-chinese
-// One-time migration: translate all Chinese prompts to English
+// One-time migration: translate/delete Chinese prompts
 //
 // Security: Requires a secret key passed as query parameter.
 // Uses admin client (service role) to bypass RLS and update
 // prompts regardless of author.
 //
 // Usage:
-//   curl -X POST "https://yoursite.com/api/admin/translate-chinese?secret=<SECRET>"
+//   Translate known prompts:
+//     curl -X POST "https://yoursite.com/api/admin/translate-chinese?secret=<SECRET>"
+//   Delete ALL Chinese prompts:
+//     curl -X DELETE "https://yoursite.com/api/admin/translate-chinese?secret=<SECRET>"
 // ============================================================
 
 import { createAdminClient } from '@/lib/supabase/server';
@@ -321,6 +324,83 @@ export async function POST(request: NextRequest) {
       translated: success,
       failed,
       details: results,
+    });
+  } catch (err) {
+    return NextResponse.json(
+      { error: 'Unexpected error', detail: String(err) },
+      { status: 500 }
+    );
+  }
+}
+
+// ---- DELETE: Remove all Chinese prompts ----
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const secret = searchParams.get('secret');
+    if (secret !== MIGRATION_SECRET) {
+      return NextResponse.json(
+        { error: 'Unauthorized. Provide ?secret=<key>' },
+        { status: 401 }
+      );
+    }
+
+    const supabase = createAdminClient();
+    const chineseRegex = /[一-鿿]/;
+
+    // Find all Chinese prompts
+    const { data: allPrompts, error: queryError } = await supabase
+      .from('prompts')
+      .select('*')
+      .eq('is_published', true);
+
+    if (queryError) {
+      return NextResponse.json(
+        { error: 'Failed to query prompts', detail: queryError.message },
+        { status: 500 }
+      );
+    }
+
+    const chinesePrompts = (allPrompts || []).filter(
+      (p: { title?: string; description?: string; content?: string; tips?: string }) =>
+        chineseRegex.test(p.title || '') ||
+        chineseRegex.test(p.description || '') ||
+        chineseRegex.test(p.content || '') ||
+        chineseRegex.test(p.tips || '')
+    );
+
+    if (chinesePrompts.length === 0) {
+      return NextResponse.json({
+        success: true,
+        message: 'No Chinese prompts found.',
+        deleted: 0,
+      });
+    }
+
+    // Delete all Chinese prompts
+    const ids = chinesePrompts.map((p: { id: number }) => p.id);
+    let deleted = 0;
+    let failed = 0;
+
+    for (const id of ids) {
+      const { error: deleteError } = await supabase
+        .from('prompts')
+        .delete()
+        .eq('id', id);
+
+      if (deleteError) {
+        failed++;
+      } else {
+        deleted++;
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      totalChinesePrompts: chinesePrompts.length,
+      deleted,
+      failed,
+      message: `Deleted ${deleted} Chinese prompts (${failed} failed)`,
     });
   } catch (err) {
     return NextResponse.json(
