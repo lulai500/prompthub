@@ -5,13 +5,16 @@
 
 import Link from 'next/link';
 import { Search, SlidersHorizontal, X, ArrowUpDown } from 'lucide-react';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createServerSupabaseClient, getCurrentUser } from '@/lib/supabase/server';
 import { formatDate } from '@/lib/utils';
 import TagLinks from '@/components/prompts/TagLinks';
 import PromptCard from '@/components/prompts/PromptCard';
 import type { Category, Prompt } from '@/types';
 
 export const dynamic = 'force-dynamic';
+
+/** Max prompts visible to unauthenticated users */
+const GUEST_LIMIT = 10;
 
 interface SearchParams {
   search?: string;
@@ -34,6 +37,8 @@ export default async function PromptsPage({
   searchParams: SearchParams;
 }) {
   const supabase = createServerSupabaseClient();
+  const currentUser = await getCurrentUser();
+  const isAuthenticated = !!currentUser;
 
   // 获取搜索参数
   const search = searchParams.search || '';
@@ -41,7 +46,8 @@ export default async function PromptsPage({
   const tagFilter = searchParams.tag || '';
   const page = parseInt(searchParams.page || '1', 10);
   const sort = searchParams.sort || 'latest';
-  const limit = 12;
+  // Authenticated users get full pagination (12/page); guests see at most GUEST_LIMIT
+  const limit = isAuthenticated ? 12 : GUEST_LIMIT;
 
   // 构建查询
   let query = supabase
@@ -78,8 +84,8 @@ export default async function PromptsPage({
   const orderColumn = sort === 'most_used' ? 'usage_count' : 'created_at';
   const orderAscending = sort === 'oldest';
 
-  // 分页
-  const from = (page - 1) * limit;
+  // 分页 — guests always start from 0
+  const from = isAuthenticated ? (page - 1) * limit : 0;
   const to = from + limit - 1;
 
   const { data: prompts, count } = await query
@@ -92,12 +98,15 @@ export default async function PromptsPage({
     .select('*')
     .order('sort_order', { ascending: true });
 
-  const totalPages = Math.ceil((count || 0) / limit);
+  const totalPages = isAuthenticated ? Math.ceil((count || 0) / limit) : 1;
   const allPrompts: Prompt[] = prompts || [];
+  // Cap results for unauthenticated users
+  const cappedPrompts = isAuthenticated ? allPrompts : allPrompts.slice(0, GUEST_LIMIT);
   const cats: Category[] = categories || [];
+  const hiddenCount = !isAuthenticated && (count || 0) > GUEST_LIMIT ? (count || 0) - GUEST_LIMIT : 0;
 
   // 预取评分统计
-  const promptIds = allPrompts.map((p) => p.id);
+  const promptIds = cappedPrompts.map((p) => p.id);
   let statsMap: Record<number, { avg_rating: number; rating_count: number; favorite_count: number }> = {};
   if (promptIds.length > 0) {
     const { data: statsData } = await supabase
@@ -111,7 +120,7 @@ export default async function PromptsPage({
     }
   }
 
-  const results: Prompt[] = allPrompts.map((p) => ({
+  const results: Prompt[] = cappedPrompts.map((p) => ({
     ...p,
     avg_rating: statsMap[p.id]?.avg_rating || 0,
     rating_count: statsMap[p.id]?.rating_count || 0,
@@ -239,29 +248,55 @@ export default async function PromptsPage({
 
         {/* ---- 提示词列表 ---- */}
         <div className="flex-1">
+          {/* ---- Guest limit banner ---- */}
+          {!isAuthenticated && (
+            <div className="card p-5 mb-5 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 border-amber-200 dark:border-amber-800">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div>
+                  <h3 className="font-semibold text-amber-800 dark:text-amber-300">
+                    Preview Mode — Showing {cappedPrompts.length} of {count || 0} prompts
+                  </h3>
+                  <p className="text-sm text-amber-600 dark:text-amber-400 mt-0.5">
+                    Sign in for free to unlock all {count || 0} prompts, favorites, and more.
+                  </p>
+                </div>
+                <Link
+                  href="/auth/login"
+                  className="btn-primary text-sm whitespace-nowrap shrink-0"
+                >
+                  Sign In to Unlock
+                </Link>
+              </div>
+            </div>
+          )}
+
           {results.length > 0 ? (
             <>
               {/* 排序控件 */}
               <div className="flex items-center justify-between mb-4">
                 <p className="text-sm text-slate-500 dark:text-slate-400">
-                  Showing {from + 1}–{Math.min(to + 1, count || 0)} of {count || 0}
+                  {isAuthenticated
+                    ? `Showing ${from + 1}–${Math.min(to + 1, count || 0)} of ${count || 0}`
+                    : `Showing ${cappedPrompts.length} of ${count || 0} prompts`}
                 </p>
-                <div className="flex items-center gap-1.5">
-                  <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
-                  {SORT_OPTIONS.map((opt) => (
-                    <Link
-                      key={opt.value}
-                      href={buildSortUrl(opt.value)}
-                      className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
-                        sort === opt.value
-                          ? 'bg-brand-100 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300'
-                          : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-dark-700'
-                      }`}
-                    >
-                      {opt.label}
-                    </Link>
-                  ))}
-                </div>
+                {isAuthenticated && (
+                  <div className="flex items-center gap-1.5">
+                    <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+                    {SORT_OPTIONS.map((opt) => (
+                      <Link
+                        key={opt.value}
+                        href={buildSortUrl(opt.value)}
+                        className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                          sort === opt.value
+                            ? 'bg-brand-100 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300'
+                            : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-dark-700'
+                        }`}
+                      >
+                        {opt.label}
+                      </Link>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* 卡片网格：响应式 1→2→3 列 */}
@@ -271,8 +306,8 @@ export default async function PromptsPage({
                 ))}
               </div>
 
-              {/* 分页 */}
-              {totalPages > 1 && (
+              {/* 分页 — 仅登录用户可见 */}
+              {isAuthenticated && totalPages > 1 && (
                 <div className="flex items-center justify-center gap-2 mt-8">
                   {Array.from({ length: totalPages }, (_, i) => {
                     const p = i + 1;
@@ -290,6 +325,23 @@ export default async function PromptsPage({
                       </Link>
                     );
                   })}
+                </div>
+              )}
+
+              {/* Locked pagination notice — 未登录用户 */}
+              {!isAuthenticated && hiddenCount > 0 && (
+                <div className="mt-8 text-center">
+                  <div className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-slate-100 dark:bg-dark-800 border border-slate-200 dark:border-dark-700">
+                    <span className="text-sm text-slate-500 dark:text-slate-400">
+                      +{hiddenCount} more prompts locked
+                    </span>
+                    <Link
+                      href="/auth/login"
+                      className="text-sm font-medium text-brand-600 dark:text-brand-400 hover:underline"
+                    >
+                      Sign in to view all →
+                    </Link>
+                  </div>
                 </div>
               )}
             </>

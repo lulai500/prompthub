@@ -43,6 +43,16 @@ export function createServerSupabaseClient() {
 }
 
 /**
+ * Get the currently authenticated user (or null if not logged in).
+ * Use in Server Components to gate content based on auth state.
+ */
+export async function getCurrentUser() {
+  const supabase = createServerSupabaseClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  return user;
+}
+
+/**
  * 创建 Supabase 管理客户端（使用 Service Role Key）
  * ⚠️ 仅在后端使用！拥有最高数据库权限，绕过 RLS
  * 使用场景：Webhook 处理、管理操作

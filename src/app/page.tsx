@@ -14,14 +14,18 @@ import {
   Heart,
   FolderOpen,
 } from 'lucide-react';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createServerSupabaseClient, getCurrentUser } from '@/lib/supabase/server';
 import PromptCard from '@/components/prompts/PromptCard';
 import type { Category, Prompt } from '@/types';
 
 export const dynamic = 'force-dynamic'; // 禁止静态缓存，确保数据实时
 
+const GUEST_LIMIT = 10;
+
 export default async function HomePage() {
   const supabase = createServerSupabaseClient();
+  const currentUser = await getCurrentUser();
+  const isAuthenticated = !!currentUser;
 
   // 并行获取数据：提示词总数 + 全部分类
   const [countResult, categoriesResult] = await Promise.all([
@@ -31,6 +35,8 @@ export default async function HomePage() {
 
   const categories: Category[] = categoriesResult.data || [];
   const totalPrompts = countResult.count || 0;
+  // Guests see capped count
+  const displayCount = isAuthenticated ? totalPrompts : Math.min(totalPrompts, GUEST_LIMIT);
 
   // 从每个分类各取热门提示词，确保首页展示多样性
   let popularPrompts: Prompt[] = [];
@@ -75,9 +81,9 @@ export default async function HomePage() {
 
   const prompts = popularPrompts;
 
-  // 英雄区统计（展示真实总数，而非 limit 后的数量）
+  // 英雄区统计（未登录用户看到有限数量）
   const stats = [
-    { label: 'Prompts', value: totalPrompts, icon: Sparkles },
+    { label: 'Prompts', value: displayCount, icon: Sparkles },
     { label: 'Categories', value: categories.length, icon: FolderOpen },
     { label: 'Free Forever', value: '100%', icon: Heart },
   ];
@@ -135,6 +141,16 @@ export default async function HomePage() {
               </div>
             ))}
           </div>
+
+          {/* 未登录用户提示 */}
+          {!isAuthenticated && totalPrompts > GUEST_LIMIT && (
+            <p className="mt-4 text-sm text-amber-600 dark:text-amber-400">
+              <Link href="/auth/login" className="font-medium underline hover:text-amber-700 dark:hover:text-amber-300">
+                Sign in
+              </Link>
+              {' '}to unlock all {totalPrompts}+ prompts
+            </p>
+          )}
         </div>
       </section>
 
