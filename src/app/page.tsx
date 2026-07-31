@@ -81,9 +81,9 @@ export default async function HomePage() {
 
   const prompts = popularPrompts;
 
-  // 英雄区统计（未登录用户看到有限数量）
+  // 英雄区统计 — 始终显示真实数据，未登录用户看到预览提示
   const stats = [
-    { label: 'Prompts', value: displayCount, icon: Sparkles },
+    { label: 'Prompts', value: totalPrompts, icon: Sparkles },
     { label: 'Categories', value: categories.length, icon: FolderOpen },
     { label: 'Free Forever', value: '100%', icon: Heart },
   ];
@@ -143,12 +143,12 @@ export default async function HomePage() {
           </div>
 
           {/* 未登录用户提示 */}
-          {!isAuthenticated && totalPrompts > GUEST_LIMIT && (
+          {!isAuthenticated && (
             <p className="mt-4 text-sm text-amber-600 dark:text-amber-400">
               <Link href="/auth/login" className="font-medium underline hover:text-amber-700 dark:hover:text-amber-300">
                 Sign in
               </Link>
-              {' '}to unlock all {totalPrompts}+ prompts
+              {' '}to browse, search, and save all {totalPrompts}+ prompts
             </p>
           )}
         </div>
