@@ -1,16 +1,18 @@
 #!/usr/bin/env node
 // ============================================================
-// PromptHub - 中文提示词批量翻译脚本
+// PromptHub - Chinese Prompt Translation Script
 //
-// 用法：
-//   1. 确保 .env.local 中填写了真实的 Supabase 凭据
-//   2. node scripts/translate-prompts.mjs
+// Usage:
+//   1. Ensure .env.local has valid Supabase credentials
+//   2. node scripts/translate-prompts.mjs --dry-run   (preview)
+//   3. node scripts/translate-prompts.mjs --force      (execute)
 //
-// 功能：
-//   - 检测数据库中包含中文的提示词
-//   - 自动翻译 title / description / content / tips 为英文
-//   - 更新数据库
-//   - 生成翻译前后的对比文件 translate-log.json
+// Features:
+//   - Detects Chinese-language prompts in the database
+//   - Translates title / description / content / tips to English
+//   - Uses hand-crafted translations for known prompts
+//   - Updates the database
+//   - Generates a translation comparison log (translate-log.json)
 // ============================================================
 
 import { createClient } from '@supabase/supabase-js';
@@ -21,7 +23,7 @@ import { fileURLToPath } from 'url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..');
 
-// ---- 加载 .env.local ----
+// ---- Load .env.local ----
 function loadEnv() {
   const envPath = resolve(ROOT, '.env.local');
   const examplePath = resolve(ROOT, '.env.example');
@@ -51,7 +53,7 @@ const SUPABASE_URL = env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_KEY = env.SUPABASE_SERVICE_ROLE_KEY || env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 if (!SUPABASE_URL || SUPABASE_URL.includes('your-project-id')) {
-  console.error('❌ 请先在 .env.local 中填写真实的 Supabase 凭据');
+  console.error('❌ Please fill in your real Supabase credentials in .env.local');
   console.error('   NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co');
   console.error('   SUPABASE_SERVICE_ROLE_KEY=eyJhbGci...');
   process.exit(1);
@@ -59,9 +61,218 @@ if (!SUPABASE_URL || SUPABASE_URL.includes('your-project-id')) {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// ---- 中→英翻译映射表 ----
+// ---- Hand-Crafted English Translations for Known Chinese Prompts ----
+// These are complete, high-quality translations for the 6 known Chinese prompts.
+// Each entry is keyed by slug for precise matching.
+const KNOWN_TRANSLATIONS = {
+  'python-rest-api': {
+    title: 'Write a Python Function for REST API Calls with Error Handling, Retry Mechanism, and Request Logging',
+    description: 'A prompt for generating a Python function to make REST API calls with comprehensive error handling, retry logic, and structured request logging.',
+    content: `You are a senior Python engineer with 10+ years of experience, dedicated to following SOLID principles and prioritizing code readability, security, and performance.
+
+## Core Task
+Write a Python function that implements REST API calls with complete error handling, retry mechanism, and request logging.
+
+## Input Boundaries
+- Base analysis and responses strictly on the provided materials
+- If the information provided is insufficient to make a judgment, clearly state "Insufficient reliable basis for conclusion"
+- Do not fabricate or speculate on any unverified content
+
+## Constraint Rules
+- Mark uncertain information with "Insufficient reliable basis for conclusion"
+- Reasoning steps must be numbered with brief titles for each step
+
+## Output Format Specification
+- Output only code with proper syntax highlighting
+- Use JSON format for structured data, table format for comparison data
+- Add docstrings before key functions
+- Use brief inline comments for complex logic
+- Label file name comments for multi-file outputs
+
+## Fallback Logic
+If the user's input is insufficient or exceeds the scope of knowledge, respond with:
+"I'm sorry, based on the information provided, I cannot give a reliable answer. Please provide the following missing information: [list key missing information]"`,
+    tips: `## Tuning Tips
+- Temperature: 0.5 for consistent, focused code generation
+- Max Tokens: 4096
+- Top P: 0.95
+- Estimated input: ~366 tokens
+- For best results, specify the API endpoint, authentication method, and expected response format`,
+  },
+
+  'python-bug': {
+    title: 'Analyze Python Code for Bugs, Performance Issues, and Security Risks with Improvement Suggestions',
+    description: 'A prompt for analyzing Python code to identify potential bugs, performance bottlenecks, and security vulnerabilities, with actionable improvement suggestions and fixes.',
+    content: `You are a senior Python developer with 10+ years of experience, dedicated to following SOLID principles and prioritizing code readability, security, and performance.
+
+## Core Task
+Analyze the following Python code and identify potential bugs, performance issues, and security risks. Provide improvement suggestions and corrected code.
+
+## Input Boundaries
+- Base analysis and responses strictly on the provided materials
+- If the information provided is insufficient to make a judgment, clearly state "Insufficient reliable basis for conclusion"
+- Do not fabricate or speculate on any unverified content
+
+## Constraint Rules
+- Mark uncertain information with "Insufficient reliable basis for conclusion"
+- Reasoning steps must be numbered with brief titles for each step
+
+## Output Format Specification
+- Output only code with proper syntax highlighting
+- Use JSON format for structured data, table format for comparison data
+- Add docstrings before key functions
+- Use brief inline comments for complex logic
+- Label file name comments for multi-file outputs
+
+## Fallback Logic
+If the user's input is insufficient or exceeds the scope of knowledge, respond with:
+"I'm sorry, based on the information provided, I cannot give a reliable answer. Please provide the following missing information: [list key missing information]"`,
+    tips: `## Tuning Tips
+- Temperature: 0.5 for focused, analytical results
+- Max Tokens: 4096
+- Top P: 0.95
+- Estimated input: ~461 tokens
+- For best results, provide complete code files with context rather than isolated snippets`,
+  },
+
+  'prompt-klatzmen': {
+    title: 'Write an In-Depth Analysis Article on AI Development Trends for Tech Professionals',
+    description: 'A prompt for crafting a comprehensive, professional yet accessible analysis article on artificial intelligence development trends, tailored for technology professionals.',
+    content: `You are a senior copywriter and content strategist, skilled in platform content creation. You are proficient in PAS/AIDA/BAB copywriting frameworks and familiar with platform algorithm preferences and user psychology.
+
+## Core Task
+Write an in-depth analysis article on AI development trends, aimed at technology professionals, with a tone that is professional but not overly technical or obscure.
+
+## Input Boundaries
+- Base analysis and responses strictly on the provided materials
+- If the information provided is insufficient to make a judgment, clearly state "Insufficient reliable basis for conclusion"
+- Do not fabricate or speculate on any unverified content
+
+## Constraint Rules
+- Mark uncertain information with "Insufficient reliable basis for conclusion"
+- Reasoning steps must be numbered with brief titles for each step
+
+## Output Format Specification
+- Use structured report format: core conclusion first, then detailed analysis, then actionable recommendations
+- Use heading hierarchy for clear organization
+- Bold key findings and important data points
+- Include bullet points for key takeaways
+
+## Fallback Logic
+If the user's input is insufficient or exceeds the scope of knowledge, respond with:
+"I'm sorry, based on the information provided, I cannot give a reliable answer. Please provide the following missing information: [list key missing information]"`,
+    tips: `## Tuning Tips
+- Temperature: 0.5 for balanced creativity and coherence
+- Max Tokens: 4096
+- Top P: 0.95
+- Estimated input: ~443 tokens
+- For best results, specify the target audience, article length, and any specific AI domains to focus on`,
+  },
+
+  'javascript': {
+    title: 'Review JavaScript Code: Evaluate Readability, Performance, and Security with Refactoring Suggestions',
+    description: 'A prompt for reviewing JavaScript code across readability, performance, and security dimensions, with structured refactoring recommendations.',
+    content: `You are a senior JavaScript engineer with 10+ years of experience, dedicated to following SOLID principles and prioritizing code readability, security, and performance.
+
+## Core Task
+Review the following JavaScript code and evaluate it across three dimensions: readability, performance, and security. Provide refactoring suggestions for each dimension.
+
+## Input Boundaries
+- Base analysis and responses strictly on the provided materials
+- If the information provided is insufficient to make a judgment, clearly state "Insufficient reliable basis for conclusion"
+- Do not fabricate or speculate on any unverified content
+
+## Constraint Rules
+- Mark uncertain information with "Insufficient reliable basis for conclusion"
+- Reasoning steps must be numbered with brief titles for each step
+
+## Output Format Specification
+- Output only code with proper syntax highlighting
+- Add docstrings before key functions
+- Use brief inline comments for complex logic
+- Label file name comments for multi-file outputs
+
+## Fallback Logic
+If the user's input is insufficient or exceeds the scope of knowledge, respond with:
+"I'm sorry, based on the information provided, I cannot give a reliable answer. Please provide the following missing information: [list key missing information]"`,
+    tips: `## Tuning Tips
+- Temperature: 0.5 for consistent, structured reviews
+- Max Tokens: 4096
+- Top P: 0.95
+- For best results, provide the full JavaScript file or module with any related configuration`,
+  },
+
+  'sql-sql': {
+    title: 'SQL Query Performance Optimization: Analyze Execution Plans and Provide Optimized SQL',
+    description: 'A prompt for analyzing SQL query execution plans and providing performance optimization solutions with rewritten optimized queries.',
+    content: `You are a senior SQL developer with 10+ years of experience, dedicated to following SOLID principles and prioritizing code readability, security, and performance.
+
+## Core Task
+Provide a performance optimization plan for the following SQL query. Analyze the execution plan and produce an optimized version of the SQL.
+
+## Input Boundaries
+- Base analysis and responses strictly on the provided materials
+- If the information provided is insufficient to make a judgment, clearly state "Insufficient reliable basis for conclusion"
+- Do not fabricate or speculate on any unverified content
+
+## Constraint Rules
+- Mark uncertain information with "Insufficient reliable basis for conclusion"
+- Reasoning steps must be numbered with brief titles for each step
+
+## Output Format Specification
+- Use structured report format: core conclusion first, then detailed analysis, then actionable recommendations
+- Use heading hierarchy for clear organization
+- Bold key findings and important data points
+- Include the optimized SQL with proper syntax highlighting
+
+## Fallback Logic
+If the user's input is insufficient or exceeds the scope of knowledge, respond with:
+"I'm sorry, based on the information provided, I cannot give a reliable answer. Please provide the following missing information: [list key missing information]"`,
+    tips: `## Tuning Tips
+- Temperature: 0.5 for precise, analytical results
+- Max Tokens: 4096
+- Top P: 0.95
+- Estimated input: ~410 tokens
+- For best results, include the full query, EXPLAIN output, table schemas, and index definitions`,
+  },
+
+  'react': {
+    title: 'Generate Complete React Component Unit Tests Covering Normal, Error, and Edge Cases',
+    description: 'A prompt for generating comprehensive React component unit tests that cover normal execution paths, error handling paths, and boundary conditions.',
+    content: `You are a senior TypeScript developer with 10+ years of experience, dedicated to following SOLID principles and prioritizing code readability, security, and performance.
+
+## Core Task
+Generate complete unit tests for the React component, covering normal execution paths, error handling paths, and boundary/edge case conditions.
+
+## Input Boundaries
+- Base analysis and responses strictly on the provided materials
+- If the information provided is insufficient to make a judgment, clearly state "Insufficient reliable basis for conclusion"
+- Do not fabricate or speculate on any unverified content
+
+## Constraint Rules
+- Mark uncertain information with "Insufficient reliable basis for conclusion"
+- Reasoning steps must be numbered with brief titles for each step
+
+## Output Format Specification
+- Use clear structured formatting for test organization
+- Use proper syntax highlighting for code blocks
+- Prefer JSON for structured data, tables for comparison data
+- Group tests logically: normal paths, error paths, edge cases
+
+## Fallback Logic
+If the user's input is insufficient or exceeds the scope of knowledge, respond with:
+"I'm sorry, based on the information provided, I cannot give a reliable answer. Please provide the following missing information: [list key missing information]"`,
+    tips: `## Tuning Tips
+- Temperature: 0.5 for consistent, thorough test generation
+- Max Tokens: 4096
+- Top P: 0.95
+- Estimated input: ~361 tokens
+- For best results, provide the full React component source code, props interfaces, and any custom hooks used`,
+  },
+};
+
+// ---- Chinese-to-English vocabulary map (for unknown prompts) ----
 const TRANSLATION_MAP = {
-  // 提示词标题常见词汇
   '提示词': 'Prompt',
   '生成': 'Generate',
   '创建': 'Create',
@@ -340,67 +551,87 @@ const TRANSLATION_MAP = {
   '订阅': 'Subscribe',
 };
 
+// ---- Translation Core ----
+
 /**
- * 翻译中文字符串为英文
- * 基于翻译映射表逐词替换 + 清理残余中文
+ * Translate Chinese text to English.
+ *
+ * Strategy (in order of priority):
+ * 1. Use hand-crafted KNOWN_TRANSLATIONS if the prompt slug matches
+ * 2. For unknown Chinese text, use vocabulary-map replacement as fallback
  */
 function translateChinese(text) {
   if (!text || !/[一-鿿]/.test(text)) return text;
 
   let result = text;
 
-  // 1. 替换已知中文词汇（长词优先）
+  // Replace known Chinese vocabulary (longer phrases first for accuracy)
   const sortedKeys = Object.keys(TRANSLATION_MAP).sort((a, b) => b.length - a.length);
   for (const key of sortedKeys) {
     const regex = new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
     result = result.replace(regex, TRANSLATION_MAP[key]);
   }
 
-  // 2. 清理残留的纯中文字符（保留已翻译的英文、数字、标点）
-  // 移除连续中文字符块，替换为描述性占位
-  result = result.replace(/[一-鿿]+/g, (match) => {
-    // 如果还有残留中文，保留原文并标记
-    return `[CN:${match}]`;
-  });
+  // Wrap remaining Chinese characters with a marker for manual review
+  result = result.replace(/[一-鿿]+/g, (match) => `[NEEDS REVIEW:${match}]`);
 
-  // 3. 清理多余空格
+  // Clean up whitespace
   result = result.replace(/\s{2,}/g, ' ').trim();
 
   return result;
 }
 
 /**
- * 翻译整个提示词对象
+ * Translate an entire prompt object.
+ * If the slug matches a known translation, use the hand-crafted version.
+ * Otherwise, fall back to dictionary-based translation.
  */
 function translatePrompt(prompt) {
+  // Check for hand-crafted translation by slug
+  const known = KNOWN_TRANSLATIONS[prompt.slug];
+  if (known) {
+    return {
+      id: prompt.id,
+      slug: prompt.slug,
+      title: known.title,
+      description: known.description,
+      content: known.content,
+      tips: known.tips,
+      method: 'hand-crafted',
+    };
+  }
+
+  // Fallback: dictionary-based translation for unknown Chinese prompts
   return {
     id: prompt.id,
+    slug: prompt.slug,
     title: translateChinese(prompt.title),
     description: prompt.description ? translateChinese(prompt.description) : null,
     content: translateChinese(prompt.content),
     tips: prompt.tips ? translateChinese(prompt.tips) : null,
+    method: 'dictionary-fallback',
   };
 }
 
-// ---- 主流程 ----
+// ---- Main ----
 async function main() {
-  console.log('🔍 正在连接 Supabase...');
+  console.log('🔍 Connecting to Supabase...');
   console.log(`   URL: ${SUPABASE_URL}`);
 
-  // 1. 查询所有已发布的提示词
+  // 1. Fetch all published prompts
   const { data: allPrompts, error } = await supabase
     .from('prompts')
     .select('*')
     .eq('is_published', true);
 
   if (error) {
-    console.error('❌ 查询失败:', error.message);
+    console.error('❌ Query failed:', error.message);
     process.exit(1);
   }
 
-  console.log(`\n📊 数据库中共有 ${allPrompts.length} 条已发布提示词`);
+  console.log(`\n📊 Total published prompts in database: ${allPrompts.length}`);
 
-  // 2. 检测包含中文的提示词
+  // 2. Detect Chinese-language prompts
   const chineseRegex = /[一-鿿]/;
   const chinesePrompts = allPrompts.filter(
     (p) =>
@@ -411,15 +642,17 @@ async function main() {
   );
 
   if (chinesePrompts.length === 0) {
-    console.log('✅ 没有发现包含中文的提示词，无需翻译！');
+    console.log('✅ No Chinese-language prompts found. Nothing to translate!');
     return;
   }
 
-  console.log(`\n🌐 发现 ${chinesePrompts.length} 条包含中文的提示词：`);
+  console.log(`\n🌐 Found ${chinesePrompts.length} Chinese-language prompt(s):`);
   console.log('-'.repeat(60));
 
   const translations = [];
   const logEntries = [];
+  let handCraftedCount = 0;
+  let fallbackCount = 0;
 
   for (const prompt of chinesePrompts) {
     const translated = translatePrompt(prompt);
@@ -434,53 +667,70 @@ async function main() {
 
     logEntries.push({
       id: prompt.id,
+      slug: prompt.slug,
+      method: translated.method,
       original: {
         title: prompt.title,
-        description: prompt.description?.slice(0, 100),
-        content: prompt.content?.slice(0, 100),
+        description: prompt.description?.slice(0, 200),
+        content: prompt.content?.slice(0, 200),
       },
       translated: {
         title: translated.title,
-        description: translated.description?.slice(0, 100),
-        content: translated.content?.slice(0, 100),
+        description: translated.description?.slice(0, 200),
+        content: translated.content?.slice(0, 200),
       },
     });
 
-    console.log(`  #${prompt.id} ${prompt.title}`);
-    console.log(`     → ${translated.title}`);
+    const methodLabel = translated.method === 'hand-crafted' ? '✨' : '🔧';
+    console.log(`  ${methodLabel} #${prompt.id} [${prompt.slug}]`);
+    console.log(`     Original: ${prompt.title}`);
+    console.log(`     Translated: ${translated.title}`);
+
+    if (translated.method === 'hand-crafted') {
+      handCraftedCount++;
+    } else {
+      fallbackCount++;
+    }
   }
 
   console.log('-'.repeat(60));
-  console.log(`\n📝 共需翻译 ${translations.length} 条提示词`);
+  console.log(`\n📝 Translation summary:`);
+  console.log(`   ✨ Hand-crafted translations: ${handCraftedCount}`);
+  console.log(`   🔧 Dictionary fallback (needs review): ${fallbackCount}`);
 
-  // 3. 保存翻译日志
+  if (fallbackCount > 0) {
+    console.log(`\n⚠️  ${fallbackCount} prompt(s) use dictionary-based translation and may need manual review.`);
+    console.log('   Search for [NEEDS REVIEW:...] markers in the output.');
+  }
+
+  // 3. Save translation log
   const logPath = resolve(ROOT, 'translate-log.json');
   writeFileSync(logPath, JSON.stringify(logEntries, null, 2), 'utf-8');
-  console.log(`💾 翻译对比日志已保存: ${logPath}`);
+  console.log(`💾 Translation log saved: ${logPath}`);
 
-  // 4. 确认更新
-  console.log('\n⚠️  即将更新数据库中的提示词内容');
-  console.log('   此操作不可逆（除非有数据库备份）');
+  // 4. Confirmation
+  console.log('\n⚠️  About to update prompt content in the database');
+  console.log('   This operation is irreversible (unless you have a database backup)');
 
   const args = process.argv.slice(2);
   const dryRun = args.includes('--dry-run');
   const force = args.includes('--force');
 
   if (dryRun) {
-    console.log('\n🔍 --dry-run 模式：仅检测，不更新数据库');
-    console.log('   移除 --dry-run 并添加 --force 来执行更新');
+    console.log('\n🔍 --dry-run mode: Detection only, no database updates');
+    console.log('   Remove --dry-run and add --force to execute updates');
     return;
   }
 
   if (!force) {
-    console.log('\n💡 请使用 --force 参数确认更新:');
+    console.log('\n💡 Use --force to confirm updates:');
     console.log('   node scripts/translate-prompts.mjs --force');
-    console.log('   或先使用 --dry-run 预览翻译结果');
+    console.log('   Or use --dry-run first to preview translations');
     return;
   }
 
-  // 5. 执行更新
-  console.log('\n🚀 正在更新数据库...');
+  // 5. Execute updates
+  console.log('\n🚀 Updating database...');
   let success = 0;
   let failed = 0;
 
@@ -497,21 +747,21 @@ async function main() {
       .eq('id', t.id);
 
     if (updateError) {
-      console.error(`  ❌ #${t.id} 更新失败: ${updateError.message}`);
+      console.error(`  ❌ #${t.id} update failed: ${updateError.message}`);
       failed++;
     } else {
-      console.log(`  ✅ #${t.id} 更新成功`);
+      console.log(`  ✅ #${t.id} updated successfully`);
       success++;
     }
   }
 
   console.log('\n' + '='.repeat(60));
-  console.log(`✅ 翻译完成！成功: ${success}, 失败: ${failed}`);
-  console.log(`📋 详细对比日志: translate-log.json`);
+  console.log(`✅ Translation complete! Success: ${success}, Failed: ${failed}`);
+  console.log(`📋 Detailed log: translate-log.json`);
   console.log('='.repeat(60));
 }
 
 main().catch((err) => {
-  console.error('❌ 脚本执行失败:', err);
+  console.error('❌ Script failed:', err);
   process.exit(1);
 });
