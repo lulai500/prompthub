@@ -56,12 +56,13 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * 匹配所有路径除了：
-     * - _next/static (静态文件)
-     * - _next/image (图片优化)
+     * Match all paths except:
+     * - _next/static (static files)
+     * - _next/image (image optimization)
      * - favicon.ico
-     * - public 目录文件
+     * - public directory files
+     * - API routes (api/) — these handle their own auth
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|api/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };

@@ -230,6 +230,7 @@ export default function SubmitPage() {
               className="input min-h-[200px] font-mono text-sm"
               rows={10}
               required
+              maxLength={50000}
             />
           </div>
 

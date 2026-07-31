@@ -65,6 +65,12 @@ export default function SettingsPage() {
       return;
     }
 
+    // Validate avatar URL scheme — only allow HTTPS
+    if (avatarUrl.trim() && !avatarUrl.trim().startsWith('https://')) {
+      setError('Avatar URL must use HTTPS.');
+      return;
+    }
+
     setSaving(true);
     const { error: updateError } = await supabase
       .from('profiles')
