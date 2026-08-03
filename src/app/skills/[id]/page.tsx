@@ -7,6 +7,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Wrench, Eye, Boxes } from 'lucide-react';
 import { createAnonClient } from '@/lib/supabase/server';
+import { getCachedVersionInfo } from '@/lib/query-cache';
 import RelatedPillars, { type RelatedPillarItem } from '@/components/prompts/RelatedPillars';
 import SkillFormatExport from '@/components/skills/SkillFormatExport';
 import ForkButton from '@/components/prompts/ForkButton';
@@ -38,6 +39,9 @@ export default async function SkillDetailPage({ params }: Props) {
   const { data } = await query.single();
   const skill = data as Skill | null;
   if (!skill) notFound();
+
+  // 版本信息
+  const versionInfo = await getCachedVersionInfo('skill', skill.id);
 
   // ---- 跨板块"搭配使用"推荐（按共享标签匹配）----
   let relatedItems: RelatedPillarItem[] = [];
@@ -145,6 +149,14 @@ export default async function SkillDetailPage({ params }: Props) {
         {/* ---- 右侧边栏 ---- */}
         <div className="space-y-4">
           <div className="card p-5 lg:sticky lg:top-24">
+            {versionInfo.count > 0 && (
+              <Link
+                href={`/versions/skill/${skill.id}`}
+                className="block text-xs text-slate-400 dark:text-slate-500 hover:text-brand-600 dark:hover:text-brand-400 transition-colors mb-2"
+              >
+                v{versionInfo.count} · version history
+              </Link>
+            )}
             <ForkButton
               data={{
                 type: 'skill',

@@ -13,6 +13,7 @@ import {
   getCachedPromptStats,
   getCachedVerifyCount,
   getCachedRelatedItems,
+  getCachedVersionInfo,
 } from '@/lib/query-cache';
 import { formatDate } from '@/lib/utils';
 import CopyButton from '@/components/prompts/CopyButton';
@@ -93,6 +94,9 @@ export default async function PromptDetailPage({ params }: Props) {
 
   // "我测试过"验证数（ISR 缓存；verifications 表未建时优雅降级为 0）
   const verifyCount = await getCachedVerifyCount(p.id);
+
+  // 版本信息（asset_versions 表未建时优雅降级为 0）
+  const versionInfo = await getCachedVersionInfo('prompt', p.id);
 
   // ---- 跨板块"搭配使用"推荐（按共享标签匹配，ISR 缓存）----
   let relatedItems: RelatedPillarItem[] = [];
@@ -237,6 +241,14 @@ export default async function PromptDetailPage({ params }: Props) {
                 {p.updated_at !== p.created_at &&
                   ` · Updated ${formatDate(p.updated_at)}`}
               </span>
+              {versionInfo.count > 0 && (
+                <Link
+                  href={`/versions/prompt/${p.id}`}
+                  className="hover:text-brand-600 dark:hover:text-brand-400 transition-colors"
+                >
+                  v{versionInfo.count} · history
+                </Link>
+              )}
             </div>
           </div>
 

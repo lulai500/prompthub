@@ -7,6 +7,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Workflow as WorkflowIcon, ListOrdered, Eye, Lightbulb } from 'lucide-react';
 import { createAnonClient } from '@/lib/supabase/server';
+import { getCachedVersionInfo } from '@/lib/query-cache';
 import RelatedPillars, { type RelatedPillarItem } from '@/components/prompts/RelatedPillars';
 import ForkButton from '@/components/prompts/ForkButton';
 import type { Workflow, WorkflowStep } from '@/types';
@@ -37,6 +38,9 @@ export default async function WorkflowDetailPage({ params }: Props) {
   const { data } = await query.single();
   const workflow = data as Workflow | null;
   if (!workflow) notFound();
+
+  // 版本信息
+  const versionInfo = await getCachedVersionInfo('workflow', workflow.id);
 
   // steps 来自 JSONB，兜底确保为数组
   const steps: WorkflowStep[] = Array.isArray(workflow.steps) ? workflow.steps : [];
@@ -180,6 +184,14 @@ export default async function WorkflowDetailPage({ params }: Props) {
         {/* ---- 右侧边栏 ---- */}
         <div className="space-y-4">
           <div className="card p-5 lg:sticky lg:top-24">
+            {versionInfo.count > 0 && (
+              <Link
+                href={`/versions/workflow/${workflow.id}`}
+                className="block text-xs text-slate-400 dark:text-slate-500 hover:text-brand-600 dark:hover:text-brand-400 transition-colors mb-2"
+              >
+                v{versionInfo.count} · version history
+              </Link>
+            )}
             <ForkButton
               data={{
                 type: 'workflow',

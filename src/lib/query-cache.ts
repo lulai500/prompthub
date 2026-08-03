@@ -284,6 +284,45 @@ export const getCachedBundleAssets = unstable_cache(
   { revalidate: 300 }
 );
 
+/** 版本信息（数量 + 最后更新时间） */
+export const getCachedVersionInfo = unstable_cache(
+  async (type: string, id: number) => {
+    const supabase = createAnonClient();
+    const { data } = await supabase
+      .from('asset_versions')
+      .select('created_at')
+      .eq('asset_type', type)
+      .eq('asset_id', id)
+      .order('id', { ascending: false })
+      .limit(1);
+    const { count } = await supabase
+      .from('asset_versions')
+      .select('id', { count: 'exact', head: true })
+      .eq('asset_type', type)
+      .eq('asset_id', id);
+    return { count: count || 0, lastUpdated: data?.[0]?.created_at || null };
+  },
+  ['version-info'],
+  { revalidate: 300 }
+);
+
+/** 版本历史列表（最新在前，最多 20 条） */
+export const getCachedVersions = unstable_cache(
+  async (type: string, id: number) => {
+    const supabase = createAnonClient();
+    const { data } = await supabase
+      .from('asset_versions')
+      .select('id, content, created_at')
+      .eq('asset_type', type)
+      .eq('asset_id', id)
+      .order('id', { ascending: false })
+      .limit(20);
+    return data || [];
+  },
+  ['versions'],
+  { revalidate: 300 }
+);
+
 /** 跨板块"搭配使用"推荐（提示词 → 技能/工作流，key 含提示词 id 与标签） */
 export const getCachedRelatedItems = unstable_cache(
   async (promptId: number, tags: string[]) => {
