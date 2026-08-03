@@ -6,7 +6,7 @@
 // ============================================================
 
 import Link from 'next/link';
-import { Wrench, FolderOpen, Boxes } from 'lucide-react';
+import { Wrench, FolderOpen, Boxes, Lock } from 'lucide-react';
 import { createAnonClient } from '@/lib/supabase/server';
 import type { Skill, SkillCategory } from '@/types';
 
@@ -110,7 +110,12 @@ export default async function SkillsPage({ searchParams }: { searchParams: Searc
                   href={`/skills/${skill.slug || skill.id}`}
                   className="card p-5 group hover:border-brand-300 dark:hover:border-brand-700 transition-all"
                 >
-                  <span className="badge-primary mb-3 inline-block">{skill.skill_format}</span>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="badge-primary">{skill.skill_format}</span>
+                    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded-full">
+                      <Lock className="w-3 h-3" /> Members
+                    </span>
+                  </div>
                   <h3 className="font-semibold text-slate-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
                     {skill.title}
                   </h3>

@@ -53,6 +53,22 @@ export async function getCurrentUser() {
 }
 
 /**
+ * 获取当前用户的会员等级（免费/月/季/年）
+ * 游客与免费用户返回 'free'。会员等级控制 Skills/Workflows 内容访问。
+ */
+export async function getCurrentMembershipTier(): Promise<string> {
+  const user = await getCurrentUser();
+  if (!user) return 'free';
+  const supabase = createServerSupabaseClient();
+  const { data } = await supabase
+    .from('profiles')
+    .select('membership_tier')
+    .eq('id', user.id)
+    .maybeSingle();
+  return data?.membership_tier || 'free';
+}
+
+/**
  * 创建 Supabase 管理客户端（使用 Service Role Key）
  * ⚠️ 仅在后端使用！拥有最高数据库权限，绕过 RLS
  * 使用场景：Webhook 处理、管理操作

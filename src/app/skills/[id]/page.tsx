@@ -6,15 +6,16 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Wrench, Eye, Boxes } from 'lucide-react';
-import { createAnonClient } from '@/lib/supabase/server';
+import { createAnonClient, getCurrentMembershipTier } from '@/lib/supabase/server';
 import { getCachedVersionInfo } from '@/lib/query-cache';
 import RelatedPillars, { type RelatedPillarItem } from '@/components/prompts/RelatedPillars';
 import SkillFormatExport from '@/components/skills/SkillFormatExport';
 import ForkButton from '@/components/prompts/ForkButton';
+import MembershipGate from '@/components/membership/MembershipGate';
 import type { Skill } from '@/types';
 
-// ISR：无登录态依赖，整页缓存 120s
-export const revalidate = 120;
+// 会员门控：内容随登录态变化，无法整页 ISR
+export const dynamic = 'force-dynamic';
 
 interface Props {
   params: { id: string };
@@ -42,6 +43,9 @@ export default async function SkillDetailPage({ params }: Props) {
 
   // 版本信息
   const versionInfo = await getCachedVersionInfo('skill', skill.id);
+
+  // 会员门控：仅非 free 会员可见完整内容（当前无会员 → 全员预览）
+  const isMember = (await getCurrentMembershipTier()) !== 'free';
 
   // ---- 跨板块"搭配使用"推荐（按共享标签匹配）----
   let relatedItems: RelatedPillarItem[] = [];
@@ -116,8 +120,9 @@ export default async function SkillDetailPage({ params }: Props) {
             </div>
           </div>
 
-          {/* 技能正文 */}
-          {skill.content && (
+          {/* 技能正文（会员可见） */}
+          {!isMember && <MembershipGate label="skill" />}
+          {isMember && skill.content && (
             <div className="card p-6">
               <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
                 Skill Content
@@ -130,8 +135,8 @@ export default async function SkillDetailPage({ params }: Props) {
             </div>
           )}
 
-          {/* 示例输出 */}
-          {skill.example_output && (
+          {/* 示例输出（会员可见） */}
+          {isMember && skill.example_output && (
             <div className="card p-6">
               <div className="flex items-center gap-2 mb-3">
                 <Eye className="w-5 h-5 text-green-500" />
@@ -157,18 +162,20 @@ export default async function SkillDetailPage({ params }: Props) {
                 v{versionInfo.count} · version history
               </Link>
             )}
-            <ForkButton
-              data={{
-                type: 'skill',
-                title: skill.title,
-                description: skill.description || '',
-                content: skill.content,
-                skill_format: skill.skill_format,
-                compatible_models: skill.compatible_models.join(', '),
-                install_instructions: skill.install_instructions || '',
-                example_output: skill.example_output || '',
-              }}
-            />
+            {isMember && (
+              <ForkButton
+                data={{
+                  type: 'skill',
+                  title: skill.title,
+                  description: skill.description || '',
+                  content: skill.content,
+                  skill_format: skill.skill_format,
+                  compatible_models: skill.compatible_models.join(', '),
+                  install_instructions: skill.install_instructions || '',
+                  example_output: skill.example_output || '',
+                }}
+              />
+            )}
             <h3 className="font-semibold text-slate-900 dark:text-white mb-4">Details</h3>
             {skill.compatible_models.length > 0 && (
               <div className="mb-4">
@@ -203,8 +210,8 @@ export default async function SkillDetailPage({ params }: Props) {
         </div>
       </div>
 
-      {/* 安装步骤 */}
-      {skill.install_instructions && (
+      {/* 安装步骤（会员可见） */}
+      {isMember && skill.install_instructions && (
         <div className="card p-6 mt-6">
           <div className="flex items-center gap-2 mb-3">
             <Boxes className="w-5 h-5 text-yellow-500" />
@@ -218,8 +225,8 @@ export default async function SkillDetailPage({ params }: Props) {
         </div>
       )}
 
-      {/* 多格式导出 */}
-      <SkillFormatExport skill={skill} />
+      {/* 多格式导出（会员可见） */}
+      {isMember && <SkillFormatExport skill={skill} />}
 
       {/* 跨板块"搭配使用"推荐 */}
       <RelatedPillars items={relatedItems} />
