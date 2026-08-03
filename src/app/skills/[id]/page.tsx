@@ -8,6 +8,8 @@ import Link from 'next/link';
 import { ArrowLeft, Wrench, Eye, Boxes } from 'lucide-react';
 import { createAnonClient } from '@/lib/supabase/server';
 import RelatedPillars, { type RelatedPillarItem } from '@/components/prompts/RelatedPillars';
+import SkillFormatExport from '@/components/skills/SkillFormatExport';
+import ForkButton from '@/components/prompts/ForkButton';
 import type { Skill } from '@/types';
 
 // ISR：无登录态依赖，整页缓存 120s
@@ -143,6 +145,18 @@ export default async function SkillDetailPage({ params }: Props) {
         {/* ---- 右侧边栏 ---- */}
         <div className="space-y-4">
           <div className="card p-5 lg:sticky lg:top-24">
+            <ForkButton
+              data={{
+                type: 'skill',
+                title: skill.title,
+                description: skill.description || '',
+                content: skill.content,
+                skill_format: skill.skill_format,
+                compatible_models: skill.compatible_models.join(', '),
+                install_instructions: skill.install_instructions || '',
+                example_output: skill.example_output || '',
+              }}
+            />
             <h3 className="font-semibold text-slate-900 dark:text-white mb-4">Details</h3>
             {skill.compatible_models.length > 0 && (
               <div className="mb-4">
@@ -191,6 +205,9 @@ export default async function SkillDetailPage({ params }: Props) {
           </pre>
         </div>
       )}
+
+      {/* 多格式导出 */}
+      <SkillFormatExport skill={skill} />
 
       {/* 跨板块"搭配使用"推荐 */}
       <RelatedPillars items={relatedItems} />

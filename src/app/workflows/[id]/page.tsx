@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { ArrowLeft, Workflow as WorkflowIcon, ListOrdered, Eye, Lightbulb } from 'lucide-react';
 import { createAnonClient } from '@/lib/supabase/server';
 import RelatedPillars, { type RelatedPillarItem } from '@/components/prompts/RelatedPillars';
+import ForkButton from '@/components/prompts/ForkButton';
 import type { Workflow, WorkflowStep } from '@/types';
 
 // ISR：无登录态依赖，整页缓存 120s
@@ -179,6 +180,20 @@ export default async function WorkflowDetailPage({ params }: Props) {
         {/* ---- 右侧边栏 ---- */}
         <div className="space-y-4">
           <div className="card p-5 lg:sticky lg:top-24">
+            <ForkButton
+              data={{
+                type: 'workflow',
+                title: workflow.title,
+                description: workflow.description || '',
+                content: workflow.description || '',
+                workflow_type: workflow.workflow_type,
+                tools_required: workflow.tools_required.join(', '),
+                steps: JSON.stringify(steps),
+                config_content: workflow.config_content || '',
+                expected_output: workflow.expected_output || '',
+                tips: workflow.tips || '',
+              }}
+            />
             <h3 className="font-semibold text-slate-900 dark:text-white mb-4">Details</h3>
             {workflow.tools_required.length > 0 && (
               <div className="mb-4">

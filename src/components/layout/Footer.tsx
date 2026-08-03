@@ -52,6 +52,12 @@ export default function Footer() {
               About
             </Link>
             <Link
+              href="/learn/anti-patterns"
+              className="hover:text-brand-600 dark:hover:text-brand-400 transition-colors"
+            >
+              Learn
+            </Link>
+            <Link
               href="/feedback"
               className="inline-flex items-center gap-1.5 hover:text-brand-600 dark:hover:text-brand-400 transition-colors"
             >

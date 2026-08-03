@@ -80,6 +80,41 @@ export default function SubmitPage() {
     const { data: sessionData } = await supabase.auth.getSession();
     setUser(sessionData.session?.user || null);
 
+    // 读取 Fork 预填数据（从详情页"Fork & remix"进入）
+    try {
+      const forkRaw = sessionStorage.getItem('fork-data');
+      if (forkRaw) {
+        const d = JSON.parse(forkRaw);
+        if (d && d.type) {
+          setType(d.type);
+          setTitle(d.title || '');
+          setDescription(d.description || '');
+          setContent(d.content || '');
+          if (d.type === 'prompt') {
+            setModelName(d.model_name || '');
+            setTips(d.tips || '');
+          }
+          if (d.type === 'skill') {
+            setSkillFormat(d.skill_format || 'claude-skill');
+            setCompatibleModels(d.compatible_models || '');
+            setInstallInstructions(d.install_instructions || '');
+            setExampleOutput(d.example_output || '');
+          }
+          if (d.type === 'workflow') {
+            setWorkflowType(d.workflow_type || 'agent-orchestration');
+            setToolsRequired(d.tools_required || '');
+            setStepsJson(d.steps || '');
+            setConfigContent(d.config_content || '');
+            setExpectedOutput(d.expected_output || '');
+            setTips(d.tips || '');
+          }
+        }
+        sessionStorage.removeItem('fork-data');
+      }
+    } catch {
+      // sessionStorage 不可用时忽略
+    }
+
     // 并行加载三类分类
     const [pc, sc, wc] = await Promise.all([
       supabase.from('categories').select('*').order('sort_order'),

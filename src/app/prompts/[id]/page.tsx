@@ -19,6 +19,7 @@ import CopyButton from '@/components/prompts/CopyButton';
 import FavoriteButton from '@/components/prompts/FavoriteButton';
 import RatingStars from '@/components/prompts/RatingStars';
 import VerifyButton from '@/components/prompts/VerifyButton';
+import ForkButton from '@/components/prompts/ForkButton';
 import NewsletterForm from '@/components/newsletter/NewsletterForm';
 import PromptTools from '@/components/prompts/PromptTools';
 import RelatedPillars, { type RelatedPillarItem } from '@/components/prompts/RelatedPillars';
@@ -350,6 +351,16 @@ export default async function PromptDetailPage({ params }: Props) {
               <CopyButton text={p.content} label="Copy Prompt" promptId={p.id} />
               <FavoriteButton promptId={p.id} />
               <VerifyButton promptId={p.id} initialCount={verifyCount} />
+              <ForkButton
+                data={{
+                  type: 'prompt',
+                  title: p.title,
+                  description: p.description || '',
+                  content: p.content,
+                  model_name: p.model_name || '',
+                  tips: p.tips || '',
+                }}
+              />
 
               {/* 评分 */}
               <div className="pt-3 border-t border-slate-200 dark:border-dark-700">
