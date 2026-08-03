@@ -8,6 +8,7 @@ import type { MetadataRoute } from 'next';
 import { createAnonClient } from '@/lib/supabase/server';
 import { getCachedAllTags } from '@/lib/query-cache';
 import { TASKS } from '@/lib/tasks';
+import { BUNDLES } from '@/lib/bundles';
 
 // 每次请求实时生成，避免 build 阶段依赖数据库环境变量
 export const dynamic = 'force-dynamic';
@@ -65,5 +66,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.6,
   }));
 
-  return [...staticRoutes, ...categoryRoutes, ...tagRoutes, ...taskRoutes, ...promptRoutes];
+  // ---- 资源包 ----
+  const bundleRoutes: MetadataRoute.Sitemap = BUNDLES.map((b) => ({
+    url: `${baseUrl}/bundles/${b.slug}`,
+    lastModified: new Date(),
+    changeFrequency: 'weekly',
+    priority: 0.7,
+  }));
+
+  return [...staticRoutes, ...categoryRoutes, ...tagRoutes, ...taskRoutes, ...bundleRoutes, ...promptRoutes];
 }

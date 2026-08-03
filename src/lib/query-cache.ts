@@ -242,6 +242,48 @@ export const getCachedTaskAssets = unstable_cache(
   { revalidate: 300 }
 );
 
+/** 资源包资产（key 含资源包 slug 与三类 slug 列表） */
+export const getCachedBundleAssets = unstable_cache(
+  async (
+    slug: string,
+    promptSlugs: string[],
+    skillSlugs: string[],
+    workflowSlugs: string[]
+  ) => {
+    const supabase = createAnonClient();
+    const [prompts, skills, workflows] = await Promise.all([
+      promptSlugs.length > 0
+        ? supabase
+            .from('prompts')
+            .select('*, category:categories(*)')
+            .in('slug', promptSlugs)
+            .eq('is_published', true)
+        : Promise.resolve({ data: [] }),
+      skillSlugs.length > 0
+        ? supabase
+            .from('skills')
+            .select('id, title, slug, skill_format, description')
+            .in('slug', skillSlugs)
+            .eq('is_published', true)
+        : Promise.resolve({ data: [] }),
+      workflowSlugs.length > 0
+        ? supabase
+            .from('workflows')
+            .select('id, title, slug, workflow_type, description')
+            .in('slug', workflowSlugs)
+            .eq('is_published', true)
+        : Promise.resolve({ data: [] }),
+    ]);
+    return {
+      prompts: prompts.data || [],
+      skills: skills.data || [],
+      workflows: workflows.data || [],
+    };
+  },
+  ['bundle-assets'],
+  { revalidate: 300 }
+);
+
 /** 跨板块"搭配使用"推荐（提示词 → 技能/工作流，key 含提示词 id 与标签） */
 export const getCachedRelatedItems = unstable_cache(
   async (promptId: number, tags: string[]) => {

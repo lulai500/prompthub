@@ -58,6 +58,12 @@ export default function Footer() {
               Learn
             </Link>
             <Link
+              href="/support"
+              className="hover:text-brand-600 dark:hover:text-brand-400 transition-colors"
+            >
+              Support
+            </Link>
+            <Link
               href="/feedback"
               className="inline-flex items-center gap-1.5 hover:text-brand-600 dark:hover:text-brand-400 transition-colors"
             >
