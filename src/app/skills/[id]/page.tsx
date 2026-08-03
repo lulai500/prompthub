@@ -46,6 +46,8 @@ export default async function SkillDetailPage({ params }: Props) {
 
   // 会员门控：仅非 free 会员可见完整内容（当前无会员 → 全员预览）
   const isMember = (await getCurrentMembershipTier()) !== 'free';
+  // 部分免费预览：正文前 200 字符（不含 frontmatter）
+  const skillPreview = skill.content.replace(/^---\n[\s\S]*?\n---\n?/, '').slice(0, 200);
 
   // ---- 跨板块"搭配使用"推荐（按共享标签匹配）----
   let relatedItems: RelatedPillarItem[] = [];
@@ -120,8 +122,8 @@ export default async function SkillDetailPage({ params }: Props) {
             </div>
           </div>
 
-          {/* 技能正文（会员可见） */}
-          {!isMember && <MembershipGate label="skill" />}
+          {/* 技能正文（会员可见；非会员显示部分预览） */}
+          {!isMember && <MembershipGate label="skill" preview={skillPreview} />}
           {isMember && skill.content && (
             <div className="card p-6">
               <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">

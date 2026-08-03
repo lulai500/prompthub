@@ -43,11 +43,16 @@ export default async function WorkflowDetailPage({ params }: Props) {
   // 版本信息
   const versionInfo = await getCachedVersionInfo('workflow', workflow.id);
 
-  // 会员门控：仅非 free 会员可见完整内容（当前无会员 → 全员预览）
-  const isMember = (await getCurrentMembershipTier()) !== 'free';
-
   // steps 来自 JSONB，兜底确保为数组
   const steps: WorkflowStep[] = Array.isArray(workflow.steps) ? workflow.steps : [];
+
+  // 会员门控：仅非 free 会员可见完整内容（当前无会员 → 全员预览）
+  const isMember = (await getCurrentMembershipTier()) !== 'free';
+  // 部分免费预览：前 2 步概述，或描述前 200 字符
+  const workflowPreview =
+    steps.length > 0
+      ? steps.slice(0, 2).map((s) => `${s.step}. ${s.title} — ${s.tool}`).join('\n') + '\n…'
+      : (workflow.description || '').slice(0, 200);
 
   // ---- 跨板块"搭配使用"推荐（按共享标签匹配）----
   let relatedItems: RelatedPillarItem[] = [];
@@ -122,8 +127,8 @@ export default async function WorkflowDetailPage({ params }: Props) {
             </div>
           </div>
 
-          {/* 步骤可视化（会员可见） */}
-          {!isMember && <MembershipGate label="workflow" />}
+          {/* 步骤可视化（会员可见；非会员显示部分预览） */}
+          {!isMember && <MembershipGate label="workflow" preview={workflowPreview} />}
           {isMember && (
           <div className="card p-6">
             <div className="flex items-center gap-2 mb-4">
