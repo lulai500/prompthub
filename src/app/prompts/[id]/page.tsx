@@ -8,7 +8,12 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { ArrowLeft, Tag, Monitor, Lightbulb, Image, Eye } from 'lucide-react';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import {
+  getCachedPromptDetail,
+  getCachedPromptStats,
+  getCachedVerifyCount,
+  getCachedRelatedItems,
+} from '@/lib/query-cache';
 import { formatDate } from '@/lib/utils';
 import CopyButton from '@/components/prompts/CopyButton';
 import FavoriteButton from '@/components/prompts/FavoriteButton';
@@ -19,29 +24,16 @@ import PromptTools from '@/components/prompts/PromptTools';
 import RelatedPillars, { type RelatedPillarItem } from '@/components/prompts/RelatedPillars';
 import type { Prompt } from '@/types';
 
-export const dynamic = 'force-dynamic';
+// ISR：无登录态依赖，整页缓存 120s，公开数据由 unstable_cache 再兜一层
+export const revalidate = 120;
 
 interface Props {
   params: { id: string };
 }
 
-/** 按 slug 或 id 查询已发布提示词（供 generateMetadata 与页面共用） */
-async function fetchPrompt(id: string) {
-  const supabase = createServerSupabaseClient();
-  const isNumericId = /^\d+$/.test(id);
-  let query = supabase
-    .from('prompts')
-    .select('*, category:categories(*)')
-    .eq('is_published', true);
-
-  if (isNumericId) {
-    query = query.eq('id', parseInt(id, 10));
-  } else {
-    query = query.eq('slug', id);
-  }
-
-  const { data: prompt } = await query.single();
-  return prompt as Prompt | null;
+/** 按 slug 或 id 查询已发布提示词（供 generateMetadata 与页面共用，走 ISR 缓存） */
+function fetchPrompt(id: string) {
+  return getCachedPromptDetail(id);
 }
 
 /** 详情页 SEO 元数据：独立标题/描述 + OG + Twitter Card（分享到 X/Reddit 显示卡片） */
@@ -86,57 +78,34 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function PromptDetailPage({ params }: Props) {
-  const supabase = createServerSupabaseClient();
   const { id } = params;
 
-  // 通过 slug 或 id 查询
+  // 通过 slug 或 id 查询（ISR 缓存）
   const p = await fetchPrompt(id);
 
   if (!p) {
     notFound();
   }
 
-  // 预取评分统计
-  const { data: promptStats } = await supabase
-    .from('prompt_stats')
-    .select('*')
-    .eq('prompt_id', p.id)
-    .single();
+  // 预取评分统计（ISR 缓存）
+  const promptStats = await getCachedPromptStats(p.id);
 
-  // "我测试过"验证数（verifications 表未建时优雅降级为 0）
-  let verifyCount = 0;
-  const { count: verifyCountResult } = await supabase
-    .from('verifications')
-    .select('id', { count: 'exact', head: true })
-    .eq('prompt_id', p.id);
-  if (verifyCountResult) verifyCount = verifyCountResult;
+  // "我测试过"验证数（ISR 缓存；verifications 表未建时优雅降级为 0）
+  const verifyCount = await getCachedVerifyCount(p.id);
 
-  // ---- 跨板块"搭配使用"推荐（按共享标签匹配，把三支柱串起来）----
+  // ---- 跨板块"搭配使用"推荐（按共享标签匹配，ISR 缓存）----
   let relatedItems: RelatedPillarItem[] = [];
   if (p.tags && p.tags.length > 0) {
-    const [skillsRes, workflowsRes] = await Promise.all([
-      supabase
-        .from('skills')
-        .select('id, title, slug, skill_format')
-        .overlaps('tags', p.tags)
-        .eq('is_published', true)
-        .limit(3),
-      supabase
-        .from('workflows')
-        .select('id, title, slug, workflow_type')
-        .overlaps('tags', p.tags)
-        .eq('is_published', true)
-        .limit(3),
-    ]);
+    const { skills, workflows } = await getCachedRelatedItems(p.id, p.tags);
     relatedItems = [
-      ...(skillsRes.data || []).map((s) => ({
+      ...(skills || []).map((s) => ({
         type: 'skill' as const,
         id: s.id,
         title: s.title,
         slug: s.slug,
         label: s.skill_format,
       })),
-      ...(workflowsRes.data || []).map((w) => ({
+      ...(workflows || []).map((w) => ({
         type: 'workflow' as const,
         id: w.id,
         title: w.title,
@@ -238,7 +207,7 @@ export default async function PromptDetailPage({ params }: Props) {
                 {p.tags.map((tag) => (
                   <Link
                     key={tag}
-                    href={`/prompts?tag=${tag}`}
+                    href={`/tags/${encodeURIComponent(tag)}`}
                     className="badge-default hover:bg-brand-100 dark:hover:bg-brand-900/20 hover:text-brand-600 dark:hover:text-brand-400 transition-colors"
                   >
                     {tag}

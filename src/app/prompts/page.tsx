@@ -5,8 +5,13 @@
 
 import Link from 'next/link';
 import { Search, SlidersHorizontal, X, ArrowUpDown } from 'lucide-react';
-import { createServerSupabaseClient, getCurrentUser } from '@/lib/supabase/server';
+import { getCurrentUser } from '@/lib/supabase/server';
 import { isCrawlerRequest } from '@/lib/crawler';
+import {
+  getCachedCategories,
+  getCachedPromptList,
+  getCachedPromptStatsBatch,
+} from '@/lib/query-cache';
 import { formatDate } from '@/lib/utils';
 import TagLinks from '@/components/prompts/TagLinks';
 import PromptCard from '@/components/prompts/PromptCard';
@@ -38,7 +43,6 @@ export default async function PromptsPage({
 }: {
   searchParams: SearchParams;
 }) {
-  const supabase = createServerSupabaseClient();
   const currentUser = await getCurrentUser();
   const isAuthenticated = !!currentUser;
   // 爬虫（Googlebot / Bingbot / AI 摘要爬虫）视为"已登录"，
@@ -51,77 +55,41 @@ export default async function PromptsPage({
   const tagFilter = searchParams.tag || '';
   const page = parseInt(searchParams.page || '1', 10);
   const sort = searchParams.sort || 'latest';
-  // Authenticated users get full pagination (12/page); guests see at most GUEST_LIMIT
-  const limit = canViewAll ? 12 : GUEST_LIMIT;
-
-  // 构建查询
-  let query = supabase
-    .from('prompts')
-    .select('*, category:categories(*)', { count: 'exact' })
-    .eq('is_published', true);
-
-  // 关键词搜索
-  if (search) {
-    query = query.or(
-      `title.ilike.%${search}%,description.ilike.%${search}%`
-    );
-  }
-
-  // 分类筛选
-  if (categorySlug) {
-    const { data: catData } = await supabase
-      .from('categories')
-      .select('id')
-      .eq('slug', categorySlug)
-      .single();
-
-    if (catData) {
-      query = query.eq('category_id', catData.id);
-    }
-  }
-
-  // 标签筛选
-  if (tagFilter) {
-    query = query.contains('tags', [tagFilter]);
-  }
-
-  // 排序
-  const orderColumn = sort === 'most_used' ? 'usage_count' : 'created_at';
-  const orderAscending = sort === 'oldest';
-
-  // 分页 — guests always start from 0
+  // 统一按 12 条/页缓存（游客再截断到 10 条），登录/游客/爬虫共享同一缓存
+  const limit = 12;
+  const viewLimit = canViewAll ? limit : GUEST_LIMIT;
+  // 分页显示范围（游客固定从 0 开始，仅第 1 页）
   const from = canViewAll ? (page - 1) * limit : 0;
-  const to = from + limit - 1;
+  const to = from + viewLimit - 1;
 
-  const { data: prompts, count } = await query
-    .order(orderColumn, { ascending: orderAscending })
-    .range(from, to);
+  // 全部分类（缓存；同时用于解析分类 slug → id）
+  const cats = await getCachedCategories();
+  const categoryId = categorySlug
+    ? cats.find((c) => c.slug === categorySlug)?.id ?? null
+    : null;
 
-  // 获取全部分类（侧边栏筛选用）
-  const { data: categories } = await supabase
-    .from('categories')
-    .select('*')
-    .order('sort_order', { ascending: true });
+  // 列表查询（缓存，key 含全部筛选参数）
+  const { data: allPrompts, count } = await getCachedPromptList({
+    search,
+    categoryId,
+    tag: tagFilter,
+    page,
+    sort,
+    limit,
+  });
 
   const totalPages = canViewAll ? Math.ceil((count || 0) / limit) : 1;
-  const allPrompts: Prompt[] = prompts || [];
   // Cap results for unauthenticated users
   const cappedPrompts = canViewAll ? allPrompts : allPrompts.slice(0, GUEST_LIMIT);
-  const cats: Category[] = categories || [];
   const hiddenCount = !canViewAll && (count || 0) > GUEST_LIMIT ? (count || 0) - GUEST_LIMIT : 0;
 
-  // 预取评分统计
+  // 预取评分统计（缓存）
   const promptIds = cappedPrompts.map((p) => p.id);
   let statsMap: Record<number, { avg_rating: number; rating_count: number; favorite_count: number }> = {};
   if (promptIds.length > 0) {
-    const { data: statsData } = await supabase
-      .from('prompt_stats')
-      .select('*')
-      .in('prompt_id', promptIds);
-    if (statsData) {
-      for (const s of statsData) {
-        statsMap[s.prompt_id] = s;
-      }
+    const statsData = await getCachedPromptStatsBatch(promptIds);
+    for (const s of statsData) {
+      statsMap[s.prompt_id] = s;
     }
   }
 

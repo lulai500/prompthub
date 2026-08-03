@@ -7,17 +7,18 @@
 
 import Link from 'next/link';
 import { Wrench, FolderOpen, Boxes } from 'lucide-react';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createAnonClient } from '@/lib/supabase/server';
 import type { Skill, SkillCategory } from '@/types';
 
-export const dynamic = 'force-dynamic';
+// ISR：无登录态依赖，整页缓存 120s
+export const revalidate = 120;
 
 interface SearchParams {
   category?: string;
 }
 
 export default async function SkillsPage({ searchParams }: { searchParams: SearchParams }) {
-  const supabase = createServerSupabaseClient();
+  const supabase = createAnonClient();
   const categorySlug = searchParams.category || '';
 
   const [categoriesRes, skillsRes] = await Promise.all([

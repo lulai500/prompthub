@@ -35,3 +35,7 @@ next-env.d.ts
 
 .vercel
 .env*
+
+# DeepSeek batch test data (regenerable)
+scripts/batch-outputs.json
+scripts/need-input-ids.json

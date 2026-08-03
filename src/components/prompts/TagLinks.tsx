@@ -20,7 +20,7 @@ export default function TagLinks({ tags, max = 4 }: TagLinksProps) {
       {visible.map((tag) => (
         <Link
           key={tag}
-          href={`/prompts?tag=${tag}`}
+          href={`/tags/${encodeURIComponent(tag)}`}
           className="badge-default text-xs hover:bg-brand-100 dark:hover:bg-brand-900/20 hover:text-brand-600 dark:hover:text-brand-400"
           onClick={(e) => e.stopPropagation()}
         >

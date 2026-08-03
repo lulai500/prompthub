@@ -14,8 +14,14 @@ import {
   Heart,
   FolderOpen,
 } from 'lucide-react';
-import { createServerSupabaseClient, getCurrentUser } from '@/lib/supabase/server';
+import { getCurrentUser } from '@/lib/supabase/server';
 import { isCrawlerRequest } from '@/lib/crawler';
+import {
+  getCachedCategories,
+  getCachedPromptCount,
+  getCachedPopularPrompts,
+  getCachedPopularFillers,
+} from '@/lib/query-cache';
 import PromptCard from '@/components/prompts/PromptCard';
 import type { Category, Prompt } from '@/types';
 
@@ -24,61 +30,47 @@ export const dynamic = 'force-dynamic'; // 禁止静态缓存，确保数据实�
 const GUEST_LIMIT = 10;
 
 export default async function HomePage() {
-  const supabase = createServerSupabaseClient();
   const currentUser = await getCurrentUser();
   const isAuthenticated = !!currentUser;
   // 爬虫（Googlebot / Bingbot / AI 摘要爬虫）视为"已登录"，
   // 确保首页展示真实总数与全量内容，可被搜索引擎索引
   const canViewAll = isAuthenticated || isCrawlerRequest();
 
-  // 并行获取数据：提示词总数 + 全部分类
-  const [countResult, categoriesResult] = await Promise.all([
-    supabase.from('prompts').select('*', { count: 'exact', head: true }).eq('is_published', true),
-    supabase.from('categories').select('*').order('sort_order', { ascending: true }),
+  // 并行获取数据（公开查询走 ISR 缓存，降低 Supabase 请求量与 TTFB）
+  const [totalPrompts, categories] = await Promise.all([
+    getCachedPromptCount(),
+    getCachedCategories(),
   ]);
 
-  const categories: Category[] = categoriesResult.data || [];
-  const totalPrompts = countResult.count || 0;
   // Guests see capped count
   const displayCount = canViewAll ? totalPrompts : Math.min(totalPrompts, GUEST_LIMIT);
 
-  // 从每个分类各取热门提示词，确保首页展示多样性
+  // 从每个分类各取热门提示词，确保首页展示多样性（缓存 key 含分类与条数）
   let popularPrompts: Prompt[] = [];
   if (categories.length > 0) {
     const perCategory = Math.max(1, Math.floor(6 / categories.length));
     const remainder = 6 - perCategory * categories.length;
-    const categoryPromises = categories.map(async (cat, idx) => {
-      const limit = idx < remainder ? perCategory + 1 : perCategory;
-      const { data } = await supabase
-        .from('prompts')
-        .select('*, category:categories(*)')
-        .eq('category_id', cat.id)
-        .eq('is_published', true)
-        .order('usage_count', { ascending: false })
-        .limit(limit);
-      return data || [];
-    });
-    const allResults = await Promise.all(categoryPromises);
-    popularPrompts = allResults.flat();
+    const maxPer = perCategory + (remainder > 0 ? 1 : 0);
+    const cached = await getCachedPopularPrompts(
+      categories.map((c) => c.id),
+      maxPer
+    );
+
+    // 缓存结果按分类顺序分组，按原规则截取
+    let idx = 0;
+    for (let i = 0; i < categories.length; i++) {
+      const need = i < remainder ? perCategory + 1 : perCategory;
+      popularPrompts.push(...cached.slice(idx, idx + need));
+      idx += need;
+    }
 
     // 如果某分类下没有提示词，用全局热门补足到6条
     if (popularPrompts.length < 6) {
-      const existingIds = new Set(popularPrompts.map((p) => p.id));
-      const { data: fillers } = await supabase
-        .from('prompts')
-        .select('*, category:categories(*)')
-        .eq('is_published', true)
-        .order('usage_count', { ascending: false })
-        .limit(10);
-      if (fillers) {
-        for (const filler of fillers) {
-          if (popularPrompts.length >= 6) break;
-          if (!existingIds.has(filler.id)) {
-            popularPrompts.push(filler);
-            existingIds.add(filler.id);
-          }
-        }
-      }
+      const fillers = await getCachedPopularFillers(
+        popularPrompts.map((p) => p.id),
+        6 - popularPrompts.length
+      );
+      popularPrompts.push(...fillers);
     }
     popularPrompts = popularPrompts.slice(0, 6);
   }

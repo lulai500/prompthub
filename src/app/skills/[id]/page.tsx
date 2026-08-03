@@ -6,18 +6,19 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Wrench, Eye, Boxes } from 'lucide-react';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createAnonClient } from '@/lib/supabase/server';
 import RelatedPillars, { type RelatedPillarItem } from '@/components/prompts/RelatedPillars';
 import type { Skill } from '@/types';
 
-export const dynamic = 'force-dynamic';
+// ISR：无登录态依赖，整页缓存 120s
+export const revalidate = 120;
 
 interface Props {
   params: { id: string };
 }
 
 export default async function SkillDetailPage({ params }: Props) {
-  const supabase = createServerSupabaseClient();
+  const supabase = createAnonClient();
   const { id } = params;
 
   // 通过 slug 或 id 查询
