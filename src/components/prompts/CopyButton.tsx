@@ -6,6 +6,7 @@
 
 import { useState } from 'react';
 import { Copy, Check } from 'lucide-react';
+import { track } from '@vercel/analytics';
 import { copyToClipboard } from '@/lib/utils';
 
 interface CopyButtonProps {
@@ -23,6 +24,8 @@ export default function CopyButton({ text, label = 'Copy', promptId }: CopyButto
     if (success) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+      // 行为事件埋点：复制提示词
+      track('prompt_copy', promptId ? { prompt_id: promptId } : undefined);
       // fire-and-forget: 递增使用计数，不阻塞 UI
       if (promptId) {
         fetch(`/api/prompts/${promptId}/usage`, { method: 'POST' }).catch(() => {});

@@ -128,6 +128,18 @@ export default function Header() {
                 Explore
               </Link>
               <Link
+                href="/skills"
+                className="px-3 py-2 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-dark-700 transition-colors"
+              >
+                Skills
+              </Link>
+              <Link
+                href="/workflows"
+                className="px-3 py-2 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-dark-700 transition-colors"
+              >
+                Workflows
+              </Link>
+              <Link
                 href="/pricing"
                 className="px-3 py-2 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-dark-700 transition-colors"
               >
@@ -297,6 +309,20 @@ export default function Header() {
                 onClick={() => setMobileOpen(false)}
               >
                 Explore Prompts
+              </Link>
+              <Link
+                href="/skills"
+                className="px-4 py-2.5 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-dark-700"
+                onClick={() => setMobileOpen(false)}
+              >
+                Skills
+              </Link>
+              <Link
+                href="/workflows"
+                className="px-4 py-2.5 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-dark-700"
+                onClick={() => setMobileOpen(false)}
+              >
+                Workflows
               </Link>
               <Link
                 href="/pricing"

@@ -6,6 +6,7 @@
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import './globals.css';
+import { Analytics } from '@vercel/analytics/react';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 
@@ -65,6 +66,8 @@ export default function RootLayout({
         <Header />
         <main className="flex-1">{children}</main>
         <Footer />
+        {/* Vercel Web Analytics：访问量与页面浏览（本地/未启用时自动 no-op） */}
+        <Analytics />
       </body>
     </html>
   );

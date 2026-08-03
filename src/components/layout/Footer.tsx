@@ -4,6 +4,7 @@
 
 import Link from 'next/link';
 import { MessageSquare } from 'lucide-react';
+import NewsletterForm from '@/components/newsletter/NewsletterForm';
 
 // 开源仓库链接（可通过环境变量配置）
 const githubUrl = process.env.NEXT_PUBLIC_GITHUB_URL || 'https://github.com/lulai500/prompthub';
@@ -12,6 +13,19 @@ export default function Footer() {
   return (
     <footer className="border-t border-slate-200 dark:border-dark-700 bg-slate-50 dark:bg-dark-950 mt-auto">
       <div className="container-page py-8">
+        {/* ---- Newsletter 订阅区 ---- */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-8 mb-8 border-b border-slate-200 dark:border-dark-700">
+          <div>
+            <h3 className="font-semibold text-slate-900 dark:text-white">
+              Get the weekly pick
+            </h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+              3 tested prompts &amp; skills every Monday. Free, unsubscribe anytime.
+            </p>
+          </div>
+          <NewsletterForm source="footer" compact />
+        </div>
+
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           {/* 品牌 */}
           <div className="flex items-center gap-2.5">

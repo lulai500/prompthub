@@ -8,6 +8,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Heart } from 'lucide-react';
+import { track } from '@vercel/analytics';
 import { createClient } from '@/lib/supabase/client';
 
 interface FavoriteButtonProps {
@@ -69,6 +70,11 @@ export default function FavoriteButton({ promptId }: FavoriteButtonProps) {
       });
       setIsFavorited(true);
     }
+    // 行为事件埋点：收藏 / 取消收藏
+    track('prompt_favorite', {
+      prompt_id: promptId,
+      action: isFavorited ? 'remove' : 'add',
+    });
     setLoading(false);
   }
 

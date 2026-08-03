@@ -15,6 +15,7 @@ import {
   FolderOpen,
 } from 'lucide-react';
 import { createServerSupabaseClient, getCurrentUser } from '@/lib/supabase/server';
+import { isCrawlerRequest } from '@/lib/crawler';
 import PromptCard from '@/components/prompts/PromptCard';
 import type { Category, Prompt } from '@/types';
 
@@ -26,6 +27,9 @@ export default async function HomePage() {
   const supabase = createServerSupabaseClient();
   const currentUser = await getCurrentUser();
   const isAuthenticated = !!currentUser;
+  // 爬虫（Googlebot / Bingbot / AI 摘要爬虫）视为"已登录"，
+  // 确保首页展示真实总数与全量内容，可被搜索引擎索引
+  const canViewAll = isAuthenticated || isCrawlerRequest();
 
   // 并行获取数据：提示词总数 + 全部分类
   const [countResult, categoriesResult] = await Promise.all([
@@ -36,7 +40,7 @@ export default async function HomePage() {
   const categories: Category[] = categoriesResult.data || [];
   const totalPrompts = countResult.count || 0;
   // Guests see capped count
-  const displayCount = isAuthenticated ? totalPrompts : Math.min(totalPrompts, GUEST_LIMIT);
+  const displayCount = canViewAll ? totalPrompts : Math.min(totalPrompts, GUEST_LIMIT);
 
   // 从每个分类各取热门提示词，确保首页展示多样性
   let popularPrompts: Prompt[] = [];
@@ -143,7 +147,7 @@ export default async function HomePage() {
           </div>
 
           {/* 未登录用户提示 */}
-          {!isAuthenticated && (
+          {!canViewAll && (
             <p className="mt-4 text-sm text-amber-600 dark:text-amber-400">
               <Link href="/auth/login" className="font-medium underline hover:text-amber-700 dark:hover:text-amber-300">
                 Sign in

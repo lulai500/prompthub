@@ -6,12 +6,17 @@
 
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import type { Metadata } from 'next';
 import { ArrowLeft, Tag, Monitor, Lightbulb, Image, Eye } from 'lucide-react';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { formatDate } from '@/lib/utils';
 import CopyButton from '@/components/prompts/CopyButton';
 import FavoriteButton from '@/components/prompts/FavoriteButton';
 import RatingStars from '@/components/prompts/RatingStars';
+import VerifyButton from '@/components/prompts/VerifyButton';
+import NewsletterForm from '@/components/newsletter/NewsletterForm';
+import PromptTools from '@/components/prompts/PromptTools';
+import RelatedPillars, { type RelatedPillarItem } from '@/components/prompts/RelatedPillars';
 import type { Prompt } from '@/types';
 
 export const dynamic = 'force-dynamic';
@@ -20,11 +25,9 @@ interface Props {
   params: { id: string };
 }
 
-export default async function PromptDetailPage({ params }: Props) {
+/** 按 slug 或 id 查询已发布提示词（供 generateMetadata 与页面共用） */
+async function fetchPrompt(id: string) {
   const supabase = createServerSupabaseClient();
-  const { id } = params;
-
-  // 通过 slug 或 id 查询
   const isNumericId = /^\d+$/.test(id);
   let query = supabase
     .from('prompts')
@@ -37,13 +40,61 @@ export default async function PromptDetailPage({ params }: Props) {
     query = query.eq('slug', id);
   }
 
-  const { data: prompt, error } = await query.single();
+  const { data: prompt } = await query.single();
+  return prompt as Prompt | null;
+}
 
-  if (error || !prompt) {
+/** 详情页 SEO 元数据：独立标题/描述 + OG + Twitter Card（分享到 X/Reddit 显示卡片） */
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const prompt = await fetchPrompt(params.id);
+  if (!prompt) return { title: 'Prompt not found' };
+
+  const site = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+  const slug = prompt.slug || String(prompt.id);
+  const url = `${site}/prompts/${slug}`;
+  const description =
+    prompt.description ||
+    `A tested ${prompt.model_name || 'AI'} prompt. Copy it for free at PromptHub.`;
+
+  // 动态 OG 图（/api/og 生成 1200x630 卡片）
+  const og = new URLSearchParams({
+    title: prompt.title,
+    category: prompt.category?.name || 'AI Prompt',
+    model: prompt.model_name || '',
+  });
+  const ogImage = `${site}/api/og?${og.toString()}`;
+
+  return {
+    title: `${prompt.title} — AI Prompt`,
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      title: prompt.title,
+      description,
+      type: 'article',
+      url,
+      siteName: 'PromptHub',
+      images: [{ url: ogImage, width: 1200, height: 630, alt: prompt.title }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: prompt.title,
+      description,
+      images: [ogImage],
+    },
+  };
+}
+
+export default async function PromptDetailPage({ params }: Props) {
+  const supabase = createServerSupabaseClient();
+  const { id } = params;
+
+  // 通过 slug 或 id 查询
+  const p = await fetchPrompt(id);
+
+  if (!p) {
     notFound();
   }
-
-  const p: Prompt = prompt;
 
   // 预取评分统计
   const { data: promptStats } = await supabase
@@ -52,8 +103,85 @@ export default async function PromptDetailPage({ params }: Props) {
     .eq('prompt_id', p.id)
     .single();
 
+  // "我测试过"验证数（verifications 表未建时优雅降级为 0）
+  let verifyCount = 0;
+  const { count: verifyCountResult } = await supabase
+    .from('verifications')
+    .select('id', { count: 'exact', head: true })
+    .eq('prompt_id', p.id);
+  if (verifyCountResult) verifyCount = verifyCountResult;
+
+  // ---- 跨板块"搭配使用"推荐（按共享标签匹配，把三支柱串起来）----
+  let relatedItems: RelatedPillarItem[] = [];
+  if (p.tags && p.tags.length > 0) {
+    const [skillsRes, workflowsRes] = await Promise.all([
+      supabase
+        .from('skills')
+        .select('id, title, slug, skill_format')
+        .overlaps('tags', p.tags)
+        .eq('is_published', true)
+        .limit(3),
+      supabase
+        .from('workflows')
+        .select('id, title, slug, workflow_type')
+        .overlaps('tags', p.tags)
+        .eq('is_published', true)
+        .limit(3),
+    ]);
+    relatedItems = [
+      ...(skillsRes.data || []).map((s) => ({
+        type: 'skill' as const,
+        id: s.id,
+        title: s.title,
+        slug: s.slug,
+        label: s.skill_format,
+      })),
+      ...(workflowsRes.data || []).map((w) => ({
+        type: 'workflow' as const,
+        id: w.id,
+        title: w.title,
+        slug: w.slug,
+        label: w.workflow_type,
+      })),
+    ];
+  }
+
+  // ---- JSON-LD 结构化数据（CreativeWork，争取富结果与 AI 摘要引用资格）----
+  const site = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+  const slug = p.slug || String(p.id);
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'CreativeWork',
+    name: p.title,
+    description: p.description,
+    url: `${site}/prompts/${slug}`,
+    ...(p.author?.username
+      ? { author: { '@type': 'Person', name: p.author.username } }
+      : {}),
+    ...(p.model_name
+      ? { isBasedOn: { '@type': 'SoftwareApplication', name: p.model_name } }
+      : {}),
+    ...(p.tags && p.tags.length > 0 ? { keywords: p.tags.join(', ') } : {}),
+    datePublished: p.created_at,
+    dateModified: p.updated_at,
+    ...(promptStats && promptStats.rating_count > 0
+      ? {
+          aggregateRating: {
+            '@type': 'AggregateRating',
+            ratingValue: Number(promptStats.avg_rating).toFixed(1),
+            ratingCount: promptStats.rating_count,
+          },
+        }
+      : {}),
+  };
+
   return (
     <div className="container-page py-10">
+      {/* JSON-LD 结构化数据 */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       {/* 返回链接 */}
       <Link
         href="/prompts"
@@ -156,6 +284,9 @@ export default async function PromptDetailPage({ params }: Props) {
                 {p.content}
               </code>
             </pre>
+
+            {/* 变量填充器 + Token/成本估算 */}
+            <PromptTools text={p.content} modelName={p.model_name} promptId={p.id} />
           </div>
 
           {/* 示例输出 */}
@@ -249,6 +380,7 @@ export default async function PromptDetailPage({ params }: Props) {
             <div className="space-y-3">
               <CopyButton text={p.content} label="Copy Prompt" promptId={p.id} />
               <FavoriteButton promptId={p.id} />
+              <VerifyButton promptId={p.id} initialCount={verifyCount} />
 
               {/* 评分 */}
               <div className="pt-3 border-t border-slate-200 dark:border-dark-700">
@@ -282,8 +414,14 @@ export default async function PromptDetailPage({ params }: Props) {
               </div>
             </div>
           </div>
+
+          {/* 周报订阅 */}
+          <NewsletterForm source="prompt_detail" />
         </div>
       </div>
+
+      {/* 跨板块"搭配使用"推荐（共享标签匹配） */}
+      <RelatedPillars items={relatedItems} />
     </div>
   );
 }

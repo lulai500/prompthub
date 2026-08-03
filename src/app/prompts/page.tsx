@@ -6,9 +6,11 @@
 import Link from 'next/link';
 import { Search, SlidersHorizontal, X, ArrowUpDown } from 'lucide-react';
 import { createServerSupabaseClient, getCurrentUser } from '@/lib/supabase/server';
+import { isCrawlerRequest } from '@/lib/crawler';
 import { formatDate } from '@/lib/utils';
 import TagLinks from '@/components/prompts/TagLinks';
 import PromptCard from '@/components/prompts/PromptCard';
+import TrackSearch from '@/components/analytics/TrackSearch';
 import type { Category, Prompt } from '@/types';
 
 export const dynamic = 'force-dynamic';
@@ -39,6 +41,9 @@ export default async function PromptsPage({
   const supabase = createServerSupabaseClient();
   const currentUser = await getCurrentUser();
   const isAuthenticated = !!currentUser;
+  // 爬虫（Googlebot / Bingbot / AI 摘要爬虫）视为"已登录"，
+  // 放开 10 条游客限制与分页，确保全量提示词可被搜索引擎索引
+  const canViewAll = isAuthenticated || isCrawlerRequest();
 
   // 获取搜索参数
   const search = searchParams.search || '';
@@ -47,7 +52,7 @@ export default async function PromptsPage({
   const page = parseInt(searchParams.page || '1', 10);
   const sort = searchParams.sort || 'latest';
   // Authenticated users get full pagination (12/page); guests see at most GUEST_LIMIT
-  const limit = isAuthenticated ? 12 : GUEST_LIMIT;
+  const limit = canViewAll ? 12 : GUEST_LIMIT;
 
   // 构建查询
   let query = supabase
@@ -85,7 +90,7 @@ export default async function PromptsPage({
   const orderAscending = sort === 'oldest';
 
   // 分页 — guests always start from 0
-  const from = isAuthenticated ? (page - 1) * limit : 0;
+  const from = canViewAll ? (page - 1) * limit : 0;
   const to = from + limit - 1;
 
   const { data: prompts, count } = await query
@@ -98,12 +103,12 @@ export default async function PromptsPage({
     .select('*')
     .order('sort_order', { ascending: true });
 
-  const totalPages = isAuthenticated ? Math.ceil((count || 0) / limit) : 1;
+  const totalPages = canViewAll ? Math.ceil((count || 0) / limit) : 1;
   const allPrompts: Prompt[] = prompts || [];
   // Cap results for unauthenticated users
-  const cappedPrompts = isAuthenticated ? allPrompts : allPrompts.slice(0, GUEST_LIMIT);
+  const cappedPrompts = canViewAll ? allPrompts : allPrompts.slice(0, GUEST_LIMIT);
   const cats: Category[] = categories || [];
-  const hiddenCount = !isAuthenticated && (count || 0) > GUEST_LIMIT ? (count || 0) - GUEST_LIMIT : 0;
+  const hiddenCount = !canViewAll && (count || 0) > GUEST_LIMIT ? (count || 0) - GUEST_LIMIT : 0;
 
   // 预取评分统计
   const promptIds = cappedPrompts.map((p) => p.id);
@@ -150,6 +155,8 @@ export default async function PromptsPage({
 
   return (
     <div className="container-page py-10">
+      {/* 搜索行为埋点 */}
+      <TrackSearch query={search} />
       {/* 页头 */}
       <div className="mb-8">
         <h1 className="page-title text-slate-900 dark:text-white">
@@ -249,7 +256,7 @@ export default async function PromptsPage({
         {/* ---- 提示词列表 ---- */}
         <div className="flex-1">
           {/* ---- Guest limit banner ---- */}
-          {!isAuthenticated && (
+          {!canViewAll && (
             <div className="card p-5 mb-5 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 border-amber-200 dark:border-amber-800">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div>
@@ -275,11 +282,11 @@ export default async function PromptsPage({
               {/* 排序控件 */}
               <div className="flex items-center justify-between mb-4">
                 <p className="text-sm text-slate-500 dark:text-slate-400">
-                  {isAuthenticated
+                  {canViewAll
                     ? `Showing ${from + 1}–${Math.min(to + 1, count || 0)} of ${count || 0}`
                     : `Showing ${cappedPrompts.length} of ${count || 0} prompts`}
                 </p>
-                {isAuthenticated && (
+                {canViewAll && (
                   <div className="flex items-center gap-1.5">
                     <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
                     {SORT_OPTIONS.map((opt) => (
@@ -307,7 +314,7 @@ export default async function PromptsPage({
               </div>
 
               {/* 分页 — 仅登录用户可见 */}
-              {isAuthenticated && totalPages > 1 && (
+              {canViewAll && totalPages > 1 && (
                 <div className="flex items-center justify-center gap-2 mt-8">
                   {Array.from({ length: totalPages }, (_, i) => {
                     const p = i + 1;
@@ -329,7 +336,7 @@ export default async function PromptsPage({
               )}
 
               {/* Locked pagination notice — 未登录用户 */}
-              {!isAuthenticated && hiddenCount > 0 && (
+              {!canViewAll && hiddenCount > 0 && (
                 <div className="mt-8 text-center">
                   <div className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-slate-100 dark:bg-dark-800 border border-slate-200 dark:border-dark-700">
                     <span className="text-sm text-slate-500 dark:text-slate-400">

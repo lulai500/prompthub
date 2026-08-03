@@ -158,3 +158,110 @@ export interface ApiResponse<T = unknown> {
   data?: T;
   error?: string;
 }
+
+// ============================================================
+// 三支柱扩展：Skills / Workflows
+// ============================================================
+
+/** 技能分类 */
+export interface SkillCategory {
+  id: number;
+  name: string;
+  slug: string;
+  description: string | null;
+  sort_order: number;
+  created_at: string;
+}
+
+/** 技能格式（对应 target 生态） */
+export type SkillFormat =
+  | 'claude-skill'
+  | 'claude-code'
+  | 'cursor-rules'
+  | 'codex'
+  | 'gpt-actions'
+  | 'gemini-extension'
+  | 'cross-model';
+
+/** 技能（可安装的能力包） */
+export interface Skill {
+  id: number;
+  title: string;
+  slug: string | null;
+  description: string | null;
+  content: string;
+  skill_format: SkillFormat;
+  compatible_models: string[];
+  install_instructions: string | null;
+  example_output: string | null;
+  category_id: number | null;
+  author_id?: string | null;
+  tags: string[];
+  usage_count: number;
+  is_published: boolean;
+  created_at: string;
+  updated_at: string;
+  // 关联数据
+  category?: SkillCategory | null;
+  author?: ProfilePublic | null;
+}
+
+/** 工作流分类 */
+export interface WorkflowCategory {
+  id: number;
+  name: string;
+  slug: string;
+  description: string | null;
+  sort_order: number;
+  created_at: string;
+}
+
+/** 工作流类型 */
+export type WorkflowType = 'agent-orchestration' | 'automation-template' | 'dev-scaffold';
+
+/** 工作流步骤（steps JSONB 中的单步） */
+export interface WorkflowStep {
+  step: number;
+  title: string;
+  tool: string;
+  action: string;
+  config?: string;
+}
+
+/** 工作流（可编排的多步骤流程） */
+export interface Workflow {
+  id: number;
+  title: string;
+  slug: string | null;
+  description: string | null;
+  steps: WorkflowStep[];
+  workflow_type: WorkflowType;
+  tools_required: string[];
+  config_content: string | null;
+  expected_output: string | null;
+  tips: string | null;
+  category_id: number | null;
+  author_id?: string | null;
+  tags: string[];
+  usage_count: number;
+  is_published: boolean;
+  created_at: string;
+  updated_at: string;
+  // 关联数据
+  category?: WorkflowCategory | null;
+  author?: ProfilePublic | null;
+}
+
+/** 统一资源视图行（assets_v，跨三支柱搜索用） */
+export interface Asset {
+  asset_type: 'prompt' | 'skill' | 'workflow';
+  id: number;
+  title: string;
+  slug: string;
+  description: string | null;
+  tags: string[];
+  model_name: string;
+  usage_count: number;
+  created_at: string;
+  updated_at: string;
+}

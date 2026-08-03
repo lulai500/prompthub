@@ -70,3 +70,22 @@ export function createAdminClient() {
     }
   );
 }
+
+/**
+ * 创建 Supabase 匿名只读客户端（无需用户会话）
+ * 仅能访问 RLS 放行的公开数据（分类、已发布提示词等）。
+ * 适用于 sitemap、RSS 等不依赖登录态的服务端场景。
+ */
+export function createAnonClient() {
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get() { return undefined; },
+        set() {},
+        remove() {},
+      },
+    }
+  );
+}
