@@ -14,6 +14,7 @@ import { callDeepSeek, buildAiMessages, clientTitle } from '@/lib/workstation';
 
 // Vercel Hobby 默认函数超时 10s，DeepSeek 非流式可能 20-60s
 export const maxDuration = 60;
+export const runtime = 'nodejs';
 
 const EXECUTE_WINDOW = { maxRequests: 10, windowMs: 5 * 60_000 }; // 10 次/5 分钟
 

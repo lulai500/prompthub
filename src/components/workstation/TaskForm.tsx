@@ -36,9 +36,16 @@ export default function TaskForm({ projects }: { projects: { id: number; name: s
       const data = await res.json();
       if (!res.ok) {
         setError(data.error || 'Failed to run the task.');
-      } else {
+      } else if (data.generated && data.result) {
+        // 真生成：任务已完成，看板会出现交付物
         setSuccess('Task completed — the deliverable is in your board below.');
         setQuery('');
+      } else {
+        // 降级（无 AI key / 未匹配）：明确告知，不假装成功
+        setError(
+          data.note ||
+            'AI generation is not available right now. The task was not created — try again shortly.'
+        );
       }
     } catch {
       setError('Network error. Try again.');
