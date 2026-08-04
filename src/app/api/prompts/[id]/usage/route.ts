@@ -53,6 +53,13 @@ export async function POST(
           p_asset_type: 'prompt',
           p_asset_id: promptId,
         });
+        // 记录每日活跃（用于 streak）
+        await supabase
+          .from('user_activity')
+          .upsert(
+            { user_id: user.id, active_date: new Date().toISOString().slice(0, 10) },
+            { onConflict: 'user_id,active_date' }
+          );
       } catch {
         // 静默失败
       }

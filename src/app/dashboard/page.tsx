@@ -12,9 +12,13 @@ import {
   Crown,
   Clock,
   ArrowRight,
+  Flame,
+  CheckCircle2,
+  BarChart3,
 } from 'lucide-react';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { formatDate, getMembershipLabel } from '@/lib/utils';
+import { computeStreakStats } from '@/lib/streaks';
 import CollectionsPanel from '@/components/collections/CollectionsPanel';
 
 export const dynamic = 'force-dynamic';
@@ -70,6 +74,20 @@ export default async function DashboardPage() {
       }
     }
   }
+
+  // 每日活跃日期（用于 streak 连续使用计算）
+  const { data: activity } = await supabase
+    .from('user_activity')
+    .select('active_date')
+    .eq('user_id', user.id)
+    .order('active_date', { ascending: false })
+    .limit(366);
+  const dates = (activity || [])
+    .map((a) => (a.active_date || '').toString().slice(0, 10))
+    .filter(Boolean);
+  const streak = computeStreakStats(dates);
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const checkedInToday = dates.includes(todayStr);
 
   return (
     <div className="container-page py-10">
@@ -138,6 +156,44 @@ export default async function DashboardPage() {
         </Link>
       </div>
 
+      {/* Streak 连续使用 */}
+      <div className="card p-6 mb-8 border-amber-200 dark:border-amber-900/40 bg-gradient-to-r from-amber-50/80 via-orange-50/70 to-rose-50/60 dark:from-amber-950/40 dark:via-orange-950/25 dark:to-rose-950/20">
+        <div className="flex items-center gap-5 flex-wrap">
+          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 ${
+            streak.current > 0
+              ? 'bg-gradient-to-br from-orange-500 to-rose-500 text-white shadow-lg shadow-orange-500/30'
+              : 'bg-slate-200 dark:bg-dark-700 text-slate-400'
+          }`}>
+            <Flame className="w-7 h-7" />
+          </div>
+          <div>
+            <p className="text-3xl font-bold text-slate-900 dark:text-white leading-none">
+              {streak.current}
+            </p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+              day streak{streak.best > 0 && (
+                <span className="text-slate-400 dark:text-slate-500"> · best {streak.best}</span>
+              )}
+            </p>
+          </div>
+          <div className="flex-1 min-w-[220px]">
+            {checkedInToday ? (
+              <p className="text-sm text-green-600 dark:text-green-400 flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 shrink-0" /> Checked in today — keep it going!
+              </p>
+            ) : streak.current > 0 ? (
+              <p className="text-sm text-amber-600 dark:text-amber-400">
+                Copy a prompt today to keep your streak alive.
+              </p>
+            ) : (
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Copy or use a prompt every day to build your streak.
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* 最近使用 */}
       {usageList.length > 0 && (
         <div className="card p-6 mb-8">
@@ -179,7 +235,24 @@ export default async function DashboardPage() {
       </div>
 
       {/* 快捷入口 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Link href="/dashboard/reports" className="card p-5 group">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <BarChart3 className="w-5 h-5 text-brand-500" />
+              <div>
+                <h3 className="font-semibold text-slate-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
+                  Weekly Report
+                </h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Your activity &amp; recommendations
+                </p>
+              </div>
+            </div>
+            <ArrowRight className="w-5 h-5 text-slate-400 group-hover:text-brand-500 transition-colors" />
+          </div>
+        </Link>
+
         <Link href="/dashboard/favorites" className="card p-5 group">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
