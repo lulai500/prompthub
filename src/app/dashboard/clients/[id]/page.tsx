@@ -13,6 +13,7 @@ import { computeTaskStats } from '@/lib/workstation';
 import { effectiveTier, quotaLimit, countMonthlyUsageFromTasks } from '@/lib/client-quota';
 import { formatDate } from '@/lib/utils';
 import ClientStatusButton from '@/components/clients/ClientStatusButton';
+import GrantProButton from '@/components/clients/GrantProButton';
 import type { ClientProject, ClientTask } from '@/types';
 
 export const dynamic = 'force-dynamic';
@@ -112,11 +113,14 @@ export default async function ClientDetailPage({
               </p>
             </div>
           </div>
-          <ClientStatusButton
-            clientId={client.id}
-            currentStatus={client.status}
-            paused={client.status === 'paused'}
-          />
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 shrink-0">
+            <GrantProButton clientId={client.id} tier={client.tier} />
+            <ClientStatusButton
+              clientId={client.id}
+              currentStatus={client.status}
+              paused={client.status === 'paused'}
+            />
+          </div>
         </div>
       </div>
 

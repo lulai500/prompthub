@@ -1,6 +1,6 @@
 // ============================================================
 // PATCH /api/dashboard/clients/[id]
-// 站主暂停/恢复客户（status: active | paused）。仅 owner。
+// 站主管理客户：status(active|paused) + 手动授/取消 Pro 额度(tier)。仅 owner。
 // ============================================================
 
 import { NextResponse } from 'next/server';
@@ -28,17 +28,39 @@ export async function PATCH(
   }
 
   const body = await request.json().catch(() => ({}));
-  const status = body.status;
-  if (status !== 'active' && status !== 'paused') {
-    return NextResponse.json({ error: 'status must be active or paused.' }, { status: 400 });
+  const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
+
+  // 暂停/恢复
+  if (body.status !== undefined) {
+    if (body.status !== 'active' && body.status !== 'paused') {
+      return NextResponse.json({ error: 'status must be active or paused.' }, { status: 400 });
+    }
+    update.status = body.status;
+  }
+
+  // 手动授/取消 Pro（B2B 额度会员，免支付）
+  if (body.tier !== undefined) {
+    if (body.tier === 'pro' && body.pro_expires_at) {
+      update.tier = 'pro';
+      update.pro_expires_at = new Date(body.pro_expires_at).toISOString();
+    } else if (body.tier === 'free') {
+      update.tier = 'free';
+      update.pro_expires_at = null;
+    } else {
+      return NextResponse.json({ error: 'tier must be pro (with pro_expires_at) or free.' }, { status: 400 });
+    }
+  }
+
+  if (Object.keys(update).length === 1) {
+    return NextResponse.json({ error: 'No changes to apply.' }, { status: 400 });
   }
 
   const admin = createAdminClient();
   const { data, error } = await admin
     .from('clients')
-    .update({ status, updated_at: new Date().toISOString() })
+    .update(update)
     .eq('id', clientId)
-    .select('id, name, status')
+    .select('id, name, status, tier, pro_expires_at')
     .maybeSingle();
 
   if (error || !data) {
