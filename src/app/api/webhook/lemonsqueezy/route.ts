@@ -42,6 +42,15 @@ export async function POST(request: Request) {
     const event: LemonSqueezyWebhookEvent = JSON.parse(body);
     const eventName = event.meta.event_name;
 
+    // ---- 客户工作站订阅（B2B 额度）分流 ----
+    // 按 checkout 时烘焙的 custom_data.client_id 识别是"哪个客户"；
+    // 与网站会员（profiles.membership_tier）互不影响
+    const metaCustom = (event.meta.custom_data ?? {}) as Record<string, unknown>;
+    const clientId = metaCustom.client_id != null ? Number(metaCustom.client_id) : null;
+    if (clientId) {
+      return handleClientSubscription(event, clientId);
+    }
+
     // 使用 admin client 绕过 RLS，确保 webhook 可以修改任意用户数据
     const supabase = createAdminClient();
 
@@ -161,6 +170,72 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
+}
+
+/**
+ * 客户工作站订阅处理（B2B 额度会员，独立于网站会员）
+ * 幂等：UNIQUE(lemon_squeezy_subscription_id) + upsert，webhook 重试安全
+ * - active/on_trial/paused/past_due → Pro，period 取 renews_at（或 ends_at）
+ * - cancelled → 保留到 ends_at（已付周期内仍有效，到期后 execute 自动回落 free）
+ * - expired → 回落 free
+ */
+async function handleClientSubscription(event: LemonSqueezyWebhookEvent, clientId: number) {
+  const eventName = event.meta.event_name;
+  const admin = createAdminClient();
+
+  if (
+    ['subscription_created', 'subscription_updated', 'subscription_cancelled', 'subscription_expired'].includes(
+      eventName
+    )
+  ) {
+    const sd = event.data.attributes;
+    // 只认 Pro variant；未配置 VARIANT_PRO 时放行（测试期）
+    const variantPro = process.env.LEMON_SQUEEZY_VARIANT_PRO;
+    if (variantPro && String(sd.variant_id ?? '') !== String(variantPro)) {
+      return NextResponse.json({ success: true });
+    }
+
+    const renewsAt = sd.renews_at ? new Date(sd.renews_at).toISOString() : null;
+    const endsAt = sd.ends_at ? new Date(sd.ends_at).toISOString() : null;
+
+    let subStatus: 'active' | 'cancelled' | 'expired' = 'expired';
+    let periodEnd: string | null = null;
+    if (['active', 'on_trial', 'paused', 'past_due'].includes(sd.status ?? '')) {
+      subStatus = 'active';
+      periodEnd = renewsAt ?? endsAt;
+    } else if (sd.status === 'cancelled') {
+      subStatus = 'cancelled';
+      periodEnd = endsAt; // 已付周期内仍有效
+    } else {
+      subStatus = 'expired';
+      periodEnd = null;
+    }
+
+    const tier: 'free' | 'pro' =
+      subStatus !== 'expired' && periodEnd && new Date(periodEnd).getTime() > Date.now() ? 'pro' : 'free';
+    const proExpiresAt = tier === 'pro' ? periodEnd : null;
+
+    await admin
+      .from('client_subscriptions')
+      .upsert(
+        {
+          client_id: clientId,
+          lemon_squeezy_subscription_id: String(event.data.id),
+          variant_id: sd.variant_id != null ? String(sd.variant_id) : null,
+          status: subStatus,
+          current_period_end: periodEnd,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'lemon_squeezy_subscription_id' }
+      );
+
+    await admin
+      .from('clients')
+      .update({ tier, pro_expires_at: proExpiresAt, updated_at: new Date().toISOString() })
+      .eq('id', clientId);
+  }
+
+  return NextResponse.json({ success: true });
 }
 
 /**

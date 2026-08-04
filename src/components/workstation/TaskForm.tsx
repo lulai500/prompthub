@@ -7,16 +7,24 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, Sparkles, AlertCircle, CheckCircle2 } from 'lucide-react';
+import UpgradeButton from '@/components/workstation/UpgradeButton';
 
 const SUGGESTIONS = ['write a blog post', 'draft a marketing email', 'debug my API code', 'analyze sales data'];
 
-export default function TaskForm({ projects }: { projects: { id: number; name: string }[] }) {
+interface TaskFormProps {
+  projects: { id: number; name: string }[];
+  canUpgrade?: boolean;
+  quotaReached?: boolean;
+}
+
+export default function TaskForm({ projects, canUpgrade = false, quotaReached = false }: TaskFormProps) {
   const router = useRouter();
   const [projectId, setProjectId] = useState(projects[0]?.id ?? 0);
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [quotaHit, setQuotaHit] = useState(false);
 
   async function run(q: string) {
     if (!projectId) {
@@ -27,6 +35,7 @@ export default function TaskForm({ projects }: { projects: { id: number; name: s
     setLoading(true);
     setError(null);
     setSuccess(null);
+    setQuotaHit(false);
     try {
       const res = await fetch('/api/workstation/execute', {
         method: 'POST',
@@ -35,7 +44,13 @@ export default function TaskForm({ projects }: { projects: { id: number; name: s
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || 'Failed to run the task.');
+        if (data.quota) {
+          // 月度配额用尽
+          setQuotaHit(true);
+          setError(data.error || 'Monthly limit reached.');
+        } else {
+          setError(data.error || 'Failed to run the task.');
+        }
       } else if (data.generated && data.result) {
         // 真生成：任务已完成，看板会出现交付物
         setSuccess('Task completed — the deliverable is in your board below.');
@@ -94,11 +109,19 @@ export default function TaskForm({ projects }: { projects: { id: number; name: s
             placeholder="e.g. write a 5-part blog post outline for our product launch"
             className="input flex-1"
           />
-          <button onClick={() => run(query)} disabled={loading} className="btn-primary shrink-0">
+          <button onClick={() => run(query)} disabled={loading || quotaReached} className="btn-primary shrink-0">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Run'}
           </button>
         </div>
       </div>
+
+      {/* 配额用尽提示 */}
+      {quotaReached && !loading && (
+        <p className="mt-3 text-sm text-red-600 dark:text-red-400 flex items-center gap-1.5">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          You&apos;ve used all your executions this month.
+        </p>
+      )}
 
       {/* 建议 */}
       {!loading && (
@@ -127,6 +150,18 @@ export default function TaskForm({ projects }: { projects: { id: number; name: s
           <AlertCircle className="w-4 h-4 shrink-0" />
           {error}
         </p>
+      )}
+      {/* 配额用尽时的升级入口 */}
+      {quotaHit && (
+        <div className="mt-3">
+          {canUpgrade ? (
+            <UpgradeButton />
+          ) : (
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Contact the account owner to enable upgrades.
+            </p>
+          )}
+        </div>
       )}
       {success && (
         <p className="mt-3 text-sm text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">

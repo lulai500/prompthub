@@ -136,6 +136,13 @@ export interface LemonSqueezyWebhookEvent {
       urls?: {
         receipt?: string;
       };
+      // 订阅事件字段（subscription_created/updated/cancelled/expired；status 已有，见上）
+      renews_at?: string | null;
+      ends_at?: string | null;
+      variant_id?: number;
+      variant_name?: string;
+      product_name?: string;
+      user_email?: string;
     };
     relationships?: {
       subscriptions?: {
@@ -277,6 +284,20 @@ export interface Client {
   name: string;
   owner_id: string;
   status: 'active' | 'paused';
+  tier: 'free' | 'pro';
+  pro_expires_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** 客户订阅（Lemon Squeezy，控制工作站 Pro 额度） */
+export interface ClientSubscription {
+  id: number;
+  client_id: number;
+  lemon_squeezy_subscription_id: string;
+  variant_id: string | null;
+  status: 'active' | 'cancelled' | 'expired';
+  current_period_end: string | null;
   created_at: string;
   updated_at: string;
 }

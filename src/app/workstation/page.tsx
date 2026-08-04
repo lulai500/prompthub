@@ -15,6 +15,8 @@ import StatsPanel from '@/components/workstation/StatsPanel';
 import TaskForm from '@/components/workstation/TaskForm';
 import Kanban from '@/components/workstation/Kanban';
 import WorkstationGuide from '@/components/workstation/WorkstationGuide';
+import QuotaBanner from '@/components/workstation/QuotaBanner';
+import { effectiveTier, quotaLimit, countMonthlyUsageFromTasks } from '@/lib/client-quota';
 import type { ClientProject, ClientTask } from '@/types';
 
 export const dynamic = 'force-dynamic';
@@ -62,6 +64,21 @@ export default async function WorkstationPage() {
   const stats = computeTaskStats(tasks as ClientTask[]);
   const streak = computeStreakStats((activity as { active_date: string }[]).map((a) => a.active_date));
 
+  // 当月 AI 执行配额（free 20 / pro 500 次）
+  const quotaTier = effectiveTier(myClient?.tier ?? 'free', myClient?.pro_expires_at ?? null);
+  const quotaUsed = countMonthlyUsageFromTasks((tasks as ClientTask[]).map((t) => ({ status: t.status, created_at: t.created_at })));
+  const quota = {
+    tier: quotaTier,
+    limit: quotaLimit(quotaTier),
+    used: quotaUsed,
+    remaining: Math.max(0, quotaLimit(quotaTier) - quotaUsed),
+  };
+  const canUpgrade = Boolean(
+    process.env.LEMON_SQUEEZY_API_KEY &&
+      process.env.LEMON_SQUEEZY_VARIANT_PRO &&
+      process.env.LEMON_SQUEEZY_STORE_ID
+  );
+
   // 首次登录需改密（临时密码 → 新密码）
   if (profile?.must_change_password) {
     return (
@@ -88,11 +105,18 @@ export default async function WorkstationPage() {
         </p>
       </div>
 
+      {/* 用量配额 */}
+      <QuotaBanner quota={quota} canUpgrade={canUpgrade} proExpiresAt={myClient?.pro_expires_at ?? null} />
+
       {/* 统计 + 新建任务 */}
       <StatsPanel stats={stats} streak={streak} />
 
       <div className="mt-8">
-        <TaskForm projects={(projects as ClientProject[]).filter((p) => p.status !== 'archived')} />
+        <TaskForm
+          projects={(projects as ClientProject[]).filter((p) => p.status !== 'archived')}
+          canUpgrade={canUpgrade}
+          quotaReached={quota.remaining === 0}
+        />
       </div>
 
       {/* 看板 */}

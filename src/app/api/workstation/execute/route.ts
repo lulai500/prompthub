@@ -11,6 +11,7 @@ import { checkRateLimit } from '@/lib/rate-limit';
 import { matchTask } from '@/lib/task-match';
 import { getCachedTaskAssets } from '@/lib/query-cache';
 import { callDeepSeek, buildAiMessages, clientTitle } from '@/lib/workstation';
+import { getClientQuota } from '@/lib/client-quota';
 
 // Vercel Hobby 默认函数超时 10s，DeepSeek 非流式可能 20-60s
 export const maxDuration = 60;
@@ -53,7 +54,7 @@ export async function POST(request: Request) {
   const admin = createAdminClient();
   const { data: client } = await admin
     .from('clients')
-    .select('id, name, status, account_id')
+    .select('id, name, status, account_id, tier, pro_expires_at')
     .eq('id', project.client_id)
     .maybeSingle();
   if (!client) {
@@ -83,6 +84,18 @@ export async function POST(request: Request) {
       skills,
       workflows,
     });
+  }
+
+  // 5-b. 配额检查：当月已用 >= 额度 → 402（发起执行即计；无 key 降级不耗额度）
+  const quota = await getClientQuota(admin, client);
+  if (!quota.allowed) {
+    return NextResponse.json(
+      {
+        error: `Monthly limit reached (${quota.used}/${quota.limit}). Upgrade to Pro for 500 executions/month.`,
+        quota: { tier: quota.tier, used: quota.used, limit: quota.limit },
+      },
+      { status: 402 }
+    );
   }
 
   // 6. 建任务（in_progress）

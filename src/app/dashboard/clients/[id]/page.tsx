@@ -10,6 +10,7 @@ import { ArrowLeft, Mail, Calendar, FileText, CircleStop, PlayCircle } from 'luc
 import { getCurrentRole } from '@/lib/supabase/server';
 import { createServerSupabaseClient, createAdminClient } from '@/lib/supabase/server';
 import { computeTaskStats } from '@/lib/workstation';
+import { effectiveTier, quotaLimit, countMonthlyUsageFromTasks } from '@/lib/client-quota';
 import { formatDate } from '@/lib/utils';
 import ClientStatusButton from '@/components/clients/ClientStatusButton';
 import type { ClientProject, ClientTask } from '@/types';
@@ -61,6 +62,11 @@ export default async function ClientDetailPage({
 
   const stats = computeTaskStats(tasks as ClientTask[]);
 
+  // 当月 AI 执行配额（free 20 / pro 500 次）
+  const quotaTier = effectiveTier(client.tier, client.pro_expires_at);
+  const quotaUsed = countMonthlyUsageFromTasks((tasks as ClientTask[]).map((t) => ({ status: t.status, created_at: t.created_at })));
+  const clientQuotaLimit = quotaLimit(quotaTier);
+
   return (
     <div className="container-page py-10">
       <Link
@@ -84,6 +90,16 @@ export default async function ClientDetailPage({
               ) : (
                 <span className="badge-default text-emerald-600 dark:text-emerald-400">active</span>
               )}
+              {quotaTier === 'pro' ? (
+                <span className="badge-success text-xs">Pro</span>
+              ) : (
+                <span className="badge-default text-xs">Free</span>
+              )}
+              {quotaTier === 'pro' && client.pro_expires_at && (
+                <span className="badge-default text-xs">
+                  until {formatDate(client.pro_expires_at)}
+                </span>
+              )}
             </div>
             <div className="mt-3 space-y-1.5 text-sm text-slate-500 dark:text-slate-400">
               <p className="flex items-center gap-2">
@@ -105,12 +121,13 @@ export default async function ClientDetailPage({
       </div>
 
       {/* 统计 */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4 mb-8">
         {[
           { label: 'Tasks', value: stats.total },
           { label: 'Completed', value: stats.completed },
           { label: 'Failed', value: stats.failed },
           { label: 'In progress', value: stats.in_progress },
+          { label: 'Monthly usage', value: `${quotaUsed}/${clientQuotaLimit}` },
           { label: 'Tokens used', value: stats.tokens },
         ].map((s) => (
           <div key={s.label} className="card p-4 text-center">
