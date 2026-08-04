@@ -82,7 +82,8 @@ export default function Footer() {
 
           {/* 版权 */}
           <p className="text-xs text-slate-400 dark:text-slate-500">
-            &copy; {new Date().getFullYear()} PromptHub. All free & open source.
+            &copy; {new Date().getFullYear()} PromptHub. Open source. Prompts free —
+            skills &amp; workflows for members.
           </p>
         </div>
       </div>

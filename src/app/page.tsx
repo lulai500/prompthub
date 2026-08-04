@@ -96,7 +96,7 @@ export default async function HomePage() {
         <div className="container-page relative py-20 sm:py-28 text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-100 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300 text-sm font-medium mb-6">
             <Sparkles className="w-4 h-4" />
-            Free & Open Source
+            Prompts free forever · Skills &amp; workflows for members
           </div>
 
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-slate-900 dark:text-white max-w-3xl mx-auto leading-tight">
@@ -107,8 +107,8 @@ export default async function HomePage() {
           </h1>
 
           <p className="mt-6 text-lg sm:text-xl text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
-            A community-driven platform where developers, writers, and AI enthusiasts
-            share powerful prompts. All free, no paywalls.
+            A community-driven platform of tested prompts, skills, and workflows.
+            Prompts are free forever — members unlock full skills &amp; workflows.
           </p>
 
           {/* CTA 按钮 */}
@@ -226,8 +226,8 @@ export default async function HomePage() {
             Ready to supercharge your AI workflow?
           </h2>
           <p className="mt-3 text-slate-500 dark:text-slate-400 max-w-lg mx-auto">
-            Join PromptHub today. All prompts are free. Save your favorites,
-            organize them, and never lose a great prompt again.
+            Join PromptHub today. Prompts are free forever. Members unlock full
+            skills &amp; workflows — save favorites, organize, and never lose a great prompt.
           </p>
           <div className="mt-6 flex items-center justify-center gap-3">
             <Link href="/auth/register" className="btn-primary px-8 py-3">
