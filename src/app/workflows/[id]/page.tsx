@@ -10,6 +10,7 @@ import { createAnonClient, getCurrentMembershipTier } from '@/lib/supabase/serve
 import { getCachedVersionInfo } from '@/lib/query-cache';
 import RelatedPillars, { type RelatedPillarItem } from '@/components/prompts/RelatedPillars';
 import ForkButton from '@/components/prompts/ForkButton';
+import AddToCollectionButton from '@/components/collections/AddToCollectionButton';
 import MembershipGate from '@/components/membership/MembershipGate';
 import type { Workflow, WorkflowStep } from '@/types';
 
@@ -204,6 +205,7 @@ export default async function WorkflowDetailPage({ params }: Props) {
                 v{versionInfo.count} · version history
               </Link>
             )}
+            <AddToCollectionButton assetType="workflow" assetId={workflow.id} />
             {isMember && (
               <ForkButton
                 data={{

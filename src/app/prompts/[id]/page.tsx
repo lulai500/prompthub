@@ -21,6 +21,7 @@ import FavoriteButton from '@/components/prompts/FavoriteButton';
 import RatingStars from '@/components/prompts/RatingStars';
 import VerifyButton from '@/components/prompts/VerifyButton';
 import ForkButton from '@/components/prompts/ForkButton';
+import AddToCollectionButton from '@/components/collections/AddToCollectionButton';
 import NewsletterForm from '@/components/newsletter/NewsletterForm';
 import PromptTools from '@/components/prompts/PromptTools';
 import RelatedPillars, { type RelatedPillarItem } from '@/components/prompts/RelatedPillars';
@@ -373,6 +374,7 @@ export default async function PromptDetailPage({ params }: Props) {
                   tips: p.tips || '',
                 }}
               />
+              <AddToCollectionButton assetType="prompt" assetId={p.id} />
 
               {/* 评分 */}
               <div className="pt-3 border-t border-slate-200 dark:border-dark-700">

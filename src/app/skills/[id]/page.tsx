@@ -11,6 +11,7 @@ import { getCachedVersionInfo } from '@/lib/query-cache';
 import RelatedPillars, { type RelatedPillarItem } from '@/components/prompts/RelatedPillars';
 import SkillFormatExport from '@/components/skills/SkillFormatExport';
 import ForkButton from '@/components/prompts/ForkButton';
+import AddToCollectionButton from '@/components/collections/AddToCollectionButton';
 import MembershipGate from '@/components/membership/MembershipGate';
 import type { Skill } from '@/types';
 
@@ -164,6 +165,7 @@ export default async function SkillDetailPage({ params }: Props) {
                 v{versionInfo.count} · version history
               </Link>
             )}
+            <AddToCollectionButton assetType="skill" assetId={skill.id} />
             {isMember && (
               <ForkButton
                 data={{

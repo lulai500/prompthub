@@ -323,6 +323,41 @@ export const getCachedVersions = unstable_cache(
   { revalidate: 300 }
 );
 
+/** 每日精选：按日期确定性轮换一条精选提示词（驱动每日回访习惯） */
+export const getCachedDailyPick = unstable_cache(
+  async (dateKey: string) => {
+    const supabase = createAnonClient();
+    const { count } = await supabase
+      .from('prompts')
+      .select('id', { count: 'exact', head: true })
+      .eq('is_published', true);
+    const total = count || 1;
+    // 用日期字符串生成稳定的索引（每天一条不同提示词）
+    let hash = 0;
+    for (const ch of dateKey) hash = (hash * 31 + ch.charCodeAt(0)) % total;
+    const { data } = await supabase
+      .from('prompts')
+      .select('id, title, slug, description, model_name, category:categories(name)')
+      .eq('is_published', true)
+      .order('id', { ascending: true })
+      .range(hash, hash);
+    const row = (data as any)?.[0];
+    if (!row) return null;
+    // 分类可能是对象或数组（PostgREST 推断差异），统一取 name
+    const cat = Array.isArray(row.category) ? row.category[0] : row.category;
+    return {
+      id: row.id,
+      title: row.title,
+      slug: row.slug,
+      description: row.description,
+      model_name: row.model_name,
+      categoryName: cat?.name ?? undefined,
+    };
+  },
+  ['daily-pick'],
+  { revalidate: 86400 }
+);
+
 /** 跨板块"搭配使用"推荐（提示词 → 技能/工作流，key 含提示词 id 与标签） */
 export const getCachedRelatedItems = unstable_cache(
   async (promptId: number, tags: string[]) => {

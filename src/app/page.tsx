@@ -21,6 +21,7 @@ import {
   getCachedPromptCount,
   getCachedPopularPrompts,
   getCachedPopularFillers,
+  getCachedDailyPick,
 } from '@/lib/query-cache';
 import PromptCard from '@/components/prompts/PromptCard';
 import type { Category, Prompt } from '@/types';
@@ -76,6 +77,10 @@ export default async function HomePage() {
   }
 
   const prompts = popularPrompts;
+
+  // 每日精选（按日期确定性轮换，驱动每日回访）
+  const dateKey = new Date().toISOString().slice(0, 10);
+  const dailyPick = await getCachedDailyPick(dateKey);
 
   // 英雄区统计 — 始终显示真实数据，未登录用户看到预览提示
   const stats = [
@@ -218,6 +223,42 @@ export default async function HomePage() {
           )}
         </div>
       </section>
+
+      {/* ---- 每日精选 ---- */}
+      {dailyPick && (
+        <section className="py-10">
+          <div className="card p-6 bg-gradient-to-r from-brand-50 to-cyan-50 dark:from-brand-950/20 dark:to-cyan-950/10 border-brand-200 dark:border-brand-800">
+            <div className="flex items-center gap-2 mb-3">
+              <Sparkles className="w-5 h-5 text-brand-500" />
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                Today&apos;s Pick
+              </h2>
+              <span className="text-xs text-slate-400 dark:text-slate-500">refreshes daily</span>
+            </div>
+            <Link
+              href={`/prompts/${dailyPick.slug || dailyPick.id}`}
+              className="block group"
+            >
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
+                {dailyPick.title}
+              </h3>
+              {dailyPick.description && (
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">
+                  {dailyPick.description}
+                </p>
+              )}
+              <div className="flex items-center gap-2 mt-3 text-xs">
+                {dailyPick.categoryName && (
+                  <span className="badge-primary">{dailyPick.categoryName}</span>
+                )}
+                {dailyPick.model_name && (
+                  <span className="badge-default">{dailyPick.model_name}</span>
+                )}
+              </div>
+            </Link>
+          </div>
+        </section>
+      )}
 
       {/* ---- CTA 区 ---- */}
       <section className="py-16 bg-slate-50 dark:bg-dark-950">

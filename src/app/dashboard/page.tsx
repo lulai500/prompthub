@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { formatDate, getMembershipLabel } from '@/lib/utils';
+import CollectionsPanel from '@/components/collections/CollectionsPanel';
 
 export const dynamic = 'force-dynamic';
 
@@ -171,6 +172,11 @@ export default async function DashboardPage() {
           </div>
         </div>
       )}
+
+      {/* 收藏集 */}
+      <div className="mb-8">
+        <CollectionsPanel />
+      </div>
 
       {/* 快捷入口 */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
