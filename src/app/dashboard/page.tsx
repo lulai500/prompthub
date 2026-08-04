@@ -15,6 +15,7 @@ import {
   Flame,
   CheckCircle2,
   BarChart3,
+  Bookmark,
 } from 'lucide-react';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { formatDate, getMembershipLabel } from '@/lib/utils';
@@ -88,6 +89,21 @@ export default async function DashboardPage() {
   const streak = computeStreakStats(dates);
   const todayStr = new Date().toISOString().slice(0, 10);
   const checkedInToday = dates.includes(todayStr);
+
+  // 我关注的收藏集（网络效应第二层：订阅他人精选，最近更新排序）
+  const { data: followRows } = await supabase
+    .from('collection_followers')
+    .select('collection_id')
+    .eq('user_id', user.id);
+  const followedCollections: { id: number; title: string; slug?: string | null; updated_at: string }[] = [];
+  if (followRows && followRows.length) {
+    const { data: colls } = await supabase
+      .from('collections')
+      .select('id, title, slug, updated_at')
+      .in('id', followRows.map((f) => f.collection_id))
+      .order('updated_at', { ascending: false });
+    followedCollections.push(...(colls || []));
+  }
 
   return (
     <div className="container-page py-10">
@@ -233,6 +249,37 @@ export default async function DashboardPage() {
       <div className="mb-8">
         <CollectionsPanel />
       </div>
+
+      {/* 关注的收藏集 */}
+      {followedCollections.length > 0 && (
+        <div className="card p-6 mb-8">
+          <div className="flex items-center gap-2 mb-4">
+            <Bookmark className="w-5 h-5 text-brand-500" />
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+              Following
+            </h2>
+            <span className="text-xs text-slate-400 dark:text-slate-500">
+              collections you subscribe to
+            </span>
+          </div>
+          <div className="space-y-2">
+            {followedCollections.map((c) => (
+              <Link
+                key={c.id}
+                href={`/collections/${c.slug || c.id}`}
+                className="flex items-center justify-between gap-3 p-3 rounded-lg border border-slate-200 dark:border-dark-700 hover:border-brand-300 dark:hover:border-brand-700 transition-all group"
+              >
+                <span className="font-medium text-sm text-slate-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 truncate flex-1">
+                  {c.title}
+                </span>
+                <span className="text-xs text-slate-400 shrink-0">
+                  updated {formatDate(c.updated_at)}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* 快捷入口 */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

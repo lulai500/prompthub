@@ -8,6 +8,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { FolderOpen, Globe } from 'lucide-react';
 import { createAnonClient } from '@/lib/supabase/server';
+import FollowButton from '@/components/collections/FollowButton';
 
 export const revalidate = 300;
 
@@ -75,7 +76,10 @@ export default async function CollectionPage({ params }: Props) {
         {collection.description && (
           <p className="page-subtitle">{collection.description}</p>
         )}
-        <p className="text-xs text-slate-400 mt-2">{itemList.length} items</p>
+        <div className="flex items-center gap-4 mt-3">
+          <p className="text-xs text-slate-400">{itemList.length} items</p>
+          <FollowButton collectionId={collection.id} />
+        </div>
       </div>
 
       {itemList.length === 0 ? (
