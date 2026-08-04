@@ -10,6 +10,8 @@ export interface Profile {
   bio: string | null;
   membership_tier: MembershipTier;
   membership_expires_at: string | null;
+  role?: 'user' | 'owner' | 'client';
+  must_change_password?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -262,6 +264,47 @@ export interface Asset {
   tags: string[];
   model_name: string;
   usage_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/* ---- 客户工作站（B2B 接单工具） ---- */
+
+/** 客户（=客户登录账号的归属档案，站主创建） */
+export interface Client {
+  id: number;
+  account_id: string;
+  name: string;
+  owner_id: string;
+  status: 'active' | 'paused';
+  created_at: string;
+  updated_at: string;
+}
+
+/** 客户项目 */
+export interface ClientProject {
+  id: number;
+  client_id: number;
+  name: string;
+  description: string;
+  status: 'active' | 'completed' | 'archived';
+  created_at: string;
+  updated_at: string;
+}
+
+/** 客户任务（AI 执行 + 交付物落点） */
+export interface ClientTask {
+  id: number;
+  project_id: number;
+  client_id: number;
+  title: string;
+  input: string;
+  status: 'pending' | 'in_progress' | 'completed' | 'failed';
+  matched_task_slug: string | null;
+  prompt_id: number | null;
+  result: string | null;
+  tokens: number | null;
+  asset_ids: unknown[];
   created_at: string;
   updated_at: string;
 }

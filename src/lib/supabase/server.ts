@@ -69,6 +69,22 @@ export async function getCurrentMembershipTier(): Promise<string> {
 }
 
 /**
+ * 获取当前用户的角色（user/owner/client，未登录返回 null）
+ * 用于客户工作站权限判断（站主后台 / 客户工作台入口）
+ */
+export async function getCurrentRole(): Promise<'user' | 'owner' | 'client' | null> {
+  const user = await getCurrentUser();
+  if (!user) return null;
+  const supabase = createServerSupabaseClient();
+  const { data } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .maybeSingle();
+  return (data?.role as 'user' | 'owner' | 'client') || 'user';
+}
+
+/**
  * 创建 Supabase 管理客户端（使用 Service Role Key）
  * ⚠️ 仅在后端使用！拥有最高数据库权限，绕过 RLS
  * 使用场景：Webhook 处理、管理操作

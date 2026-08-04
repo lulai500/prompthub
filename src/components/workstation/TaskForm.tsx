@@ -1,0 +1,132 @@
+'use client';
+// ============================================================
+// 客户工作站 - 新建任务表单
+// 选项目 + 输入任务 → POST /api/workstation/execute → 刷新
+// ============================================================
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Loader2, Sparkles, AlertCircle, CheckCircle2 } from 'lucide-react';
+
+const SUGGESTIONS = ['write a blog post', 'draft a marketing email', 'debug my API code', 'analyze sales data'];
+
+export default function TaskForm({ projects }: { projects: { id: number; name: string }[] }) {
+  const router = useRouter();
+  const [projectId, setProjectId] = useState(projects[0]?.id ?? 0);
+  const [query, setQuery] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  async function run(q: string) {
+    if (!projectId) {
+      setError('Create a project first, or ask the owner to set one up.');
+      return;
+    }
+    if (!q.trim()) return;
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await fetch('/api/workstation/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId, query: q.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || 'Failed to run the task.');
+      } else {
+        setSuccess('Task completed — the deliverable is in your board below.');
+        setQuery('');
+      }
+    } catch {
+      setError('Network error. Try again.');
+    }
+    setLoading(false);
+    router.refresh();
+  }
+
+  return (
+    <div className="card p-6">
+      <div className="flex items-center gap-2 mb-1">
+        <Sparkles className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+        <h2 className="font-semibold text-slate-900 dark:text-white">Run a new task</h2>
+      </div>
+      <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+        Describe what you need. We&apos;ll match it to a tested prompt and generate the deliverable.
+      </p>
+
+      <div className="flex flex-col sm:flex-row gap-3">
+        <select
+          value={projectId}
+          onChange={(e) => setProjectId(Number(e.target.value))}
+          className="input sm:w-48 shrink-0"
+        >
+          {projects.length === 0 ? (
+            <option value={0}>No project</option>
+          ) : (
+            projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))
+          )}
+        </select>
+        <div className="flex flex-1 gap-2">
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                run(query);
+              }
+            }}
+            placeholder="e.g. write a 5-part blog post outline for our product launch"
+            className="input flex-1"
+          />
+          <button onClick={() => run(query)} disabled={loading} className="btn-primary shrink-0">
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Run'}
+          </button>
+        </div>
+      </div>
+
+      {/* 建议 */}
+      {!loading && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {SUGGESTIONS.map((s) => (
+            <button
+              key={s}
+              onClick={() => run(s)}
+              disabled={loading}
+              className="text-xs px-2.5 py-1 rounded-md border border-slate-300/60 dark:border-slate-700/60 text-slate-500 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400 hover:border-brand-400/40 transition-colors"
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {loading && (
+        <p className="mt-3 text-sm text-slate-500 dark:text-slate-400 flex items-center gap-2">
+          <Loader2 className="w-4 h-4 animate-spin text-brand-500" />
+          Generating with AI… this can take up to a minute.
+        </p>
+      )}
+      {error && (
+        <p className="mt-3 text-sm text-red-600 dark:text-red-400 flex items-center gap-1.5">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          {error}
+        </p>
+      )}
+      {success && (
+        <p className="mt-3 text-sm text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+          <CheckCircle2 className="w-4 h-4 shrink-0" />
+          {success}
+        </p>
+      )}
+    </div>
+  );
+}

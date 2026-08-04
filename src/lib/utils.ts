@@ -66,6 +66,23 @@ export async function copyToClipboard(text: string): Promise<boolean> {
 }
 
 /**
+ * 将文本作为文件下载（客户端 Blob，无需服务端）
+ * @param filename 文件名（含扩展名）
+ * @param text 文本内容
+ */
+export function downloadText(filename: string, text: string) {
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/**
  * 会员等级对应的显示名称
  */
 export function getMembershipLabel(tier: string): string {
