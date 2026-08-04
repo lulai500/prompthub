@@ -5,7 +5,8 @@
 // （付费暂未开启，Membership 卡为预告状态）
 // ============================================================
 
-import { Check, Sparkles, Clock, Lock, X } from 'lucide-react';
+import { Check, Sparkles, Lock } from 'lucide-react';
+import PricingCheckout from '@/components/pricing/PricingCheckout';
 
 const freeFeatures = [
   'All prompts across every category — free forever',
@@ -100,10 +101,9 @@ export default function PricingPage() {
           <div className="mb-6">
             <span className="text-5xl font-extrabold text-slate-900 dark:text-white">$9.99</span>
             <span className="text-lg text-slate-500 dark:text-slate-400 ml-2">/month</span>
-            <div className="flex items-center gap-1.5 text-sm text-amber-600 dark:text-amber-400 mt-2">
-              <Clock className="w-4 h-4" />
-              Membership is coming soon
-            </div>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
+              Choose a plan to unlock the full library.
+            </p>
           </div>
           <ul className="space-y-3 mb-8">
             {memberFeatures.map((feature) => (
@@ -115,19 +115,7 @@ export default function PricingPage() {
               </li>
             ))}
           </ul>
-          <a
-            href="/support"
-            className="btn-secondary w-full text-center py-3 text-base block"
-          >
-            Notify Me When It Launches
-          </a>
-          <p className="text-center text-xs text-slate-400 dark:text-slate-500 mt-3">
-            Support the project while you wait — or{' '}
-            <a href="/support" className="text-brand-600 dark:text-brand-400 hover:underline">
-              sponsor on GitHub
-            </a>
-            .
-          </p>
+          <PricingCheckout />
         </div>
       </div>
 

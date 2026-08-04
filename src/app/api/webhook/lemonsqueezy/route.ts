@@ -98,8 +98,8 @@ export async function POST(request: Request) {
         const userId = (event.meta.custom_data as any)?.user_id;
         if (!userId) break;
 
-        // 根据产品名确定会员等级和到期时间
-        const tier = getMembershipTier(subData.first_order_item?.variant_name || 'monthly');
+        // 根据产品 variant 名确定会员等级和到期时间（订阅事件用顶层 variant_name，非 order 的 first_order_item）
+        const tier = getMembershipTier(subData.variant_name || 'monthly');
         const expiresAt = getExpiresAt(tier);
 
         // 更新用户 profile
@@ -123,7 +123,7 @@ export async function POST(request: Request) {
         const userId = (event.meta.custom_data as any)?.user_id;
         if (!userId) break;
 
-        const tier = getMembershipTier(subData.first_order_item?.variant_name || 'monthly');
+        const tier = getMembershipTier(subData.variant_name || 'monthly');
         const expiresAt = getExpiresAt(tier);
 
         await supabase
