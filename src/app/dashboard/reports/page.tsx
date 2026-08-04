@@ -17,6 +17,7 @@ import {
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { computeStreakStats } from '@/lib/streaks';
 import { formatDate } from '@/lib/utils';
+import { getRecommendationsForUser } from '@/lib/recommendations';
 
 export const dynamic = 'force-dynamic';
 
@@ -108,34 +109,8 @@ export default async function WeeklyReportPage() {
     }
   }
 
-  // ---- 个性化推荐：基于本周使用标签，排除已用 ----
-  const tags = Array.from(new Set(usedTags));
-  const recommendations: {
-    type: string;
-    id: number;
-    title: string;
-    slug?: string;
-    description?: string;
-  }[] = [];
-  if (tags.length) {
-    for (const type of ['prompt', 'skill', 'workflow']) {
-      const table = TABLE[type];
-      if (!table) continue;
-      let q = supabase
-        .from(table)
-        .select('id, title, slug, description, tags')
-        .eq('is_published', true)
-        .overlaps('tags', tags)
-        .limit(3);
-      const used = usedIds[type] || [];
-      if (used.length) q = q.not('id', 'in', `(${used.join(',')})`);
-      const { data: rows } = await q;
-      for (const r of rows || []) {
-        recommendations.push({ type, id: r.id, title: r.title, slug: r.slug, description: r.description });
-      }
-      if (recommendations.length >= 6) break;
-    }
-  }
+  // ---- 个性化推荐：基于使用习惯标签，排除已用（复用共享逻辑） ----
+  const recommendations = await getRecommendationsForUser(supabase, user.id);
 
   return (
     <div className="container-page py-10">

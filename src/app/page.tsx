@@ -14,7 +14,7 @@ import {
   Heart,
   FolderOpen,
 } from 'lucide-react';
-import { getCurrentUser } from '@/lib/supabase/server';
+import { createServerSupabaseClient, getCurrentUser } from '@/lib/supabase/server';
 import { isCrawlerRequest } from '@/lib/crawler';
 import {
   getCachedCategories,
@@ -23,6 +23,7 @@ import {
   getCachedPopularFillers,
   getCachedDailyPick,
 } from '@/lib/query-cache';
+import { getRecommendationsForUser, assetHref } from '@/lib/recommendations';
 import PromptCard from '@/components/prompts/PromptCard';
 import type { Category, Prompt } from '@/types';
 
@@ -36,6 +37,13 @@ export default async function HomePage() {
   // 爬虫（Googlebot / Bingbot / AI 摘要爬虫）视为"已登录"，
   // 确保首页展示真实总数与全量内容，可被搜索引擎索引
   const canViewAll = isAuthenticated || isCrawlerRequest();
+
+  // 个性化推荐（登录用户）：基于 user_usage 历史标签
+  let recommendations: Awaited<ReturnType<typeof getRecommendationsForUser>> = [];
+  if (currentUser) {
+    const supabase = createServerSupabaseClient();
+    recommendations = await getRecommendationsForUser(supabase, currentUser.id);
+  }
 
   // 并行获取数据（公开查询走 ISR 缓存，降低 Supabase 请求量与 TTFB）
   const [totalPrompts, categories] = await Promise.all([
@@ -188,6 +196,42 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* ---- 为你推荐（登录用户专属）---- */}
+      {recommendations.length > 0 && (
+        <section className="py-10">
+          <div className="container-page">
+            <div className="flex items-center gap-2 mb-6">
+              <Sparkles className="w-5 h-5 text-amber-500" />
+              <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">
+                Recommended for you
+              </h2>
+              <span className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+                based on your recent activity
+              </span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {recommendations.map((r) => (
+                <Link
+                  key={`${r.type}:${r.id}`}
+                  href={assetHref(r.type, r.slug, r.id)}
+                  className="card p-5 group hover:border-brand-300 dark:hover:border-brand-700 transition-all"
+                >
+                  <span className="badge-default text-xs">{r.type}</span>
+                  <h3 className="font-semibold text-slate-900 dark:text-white mt-2 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors line-clamp-2">
+                    {r.title}
+                  </h3>
+                  {r.description && (
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">
+                      {r.description}
+                    </p>
+                  )}
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ---- 热门提示词区 ---- */}
       <section className="py-16">
