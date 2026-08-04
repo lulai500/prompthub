@@ -29,7 +29,7 @@ const PARAMS = [
 ];
 
 export default function ApiDocsPage() {
-  const base = 'https://prompthub-pi-six.vercel.app';
+  const base = 'https://prompthub-pi-six-gold.vercel.app';
   return (
     <div className="container-page py-10 max-w-3xl">
       <div className="mb-8">

@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   description: 'Connect PromptHub to Claude Code / Claude Desktop via the Model Context Protocol.',
 };
 
-const MCP_URL = 'https://prompthub-pi-six.vercel.app/api/mcp';
+const MCP_URL = 'https://prompthub-pi-six-gold.vercel.app/api/mcp';
 
 export default function McpDocsPage() {
   return (
