@@ -87,6 +87,14 @@ GET ${base}/api/v1/skills?category=coding`}
         </pre>
       </div>
 
+      {/* MCP */}
+      <div className="card p-6 mb-6">
+        <h2 className="text-lg font-semibold mb-2">Use it from Claude / Cursor</h2>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          PromptHub also ships an <a href="/docs/mcp" className="text-brand-600 dark:text-brand-400 hover:underline">MCP server</a> — connect it to Claude Code or Claude Desktop and query assets in plain language.
+        </p>
+      </div>
+
       {/* 说明 */}
       <div className="card p-6">
         <div className="flex items-start gap-3">
