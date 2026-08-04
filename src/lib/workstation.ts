@@ -29,10 +29,12 @@ export async function callDeepSeek(
   }
 
   const body = JSON.stringify({
-    model: 'deepseek-chat',
+    model: 'deepseek-v4-flash',
     messages,
     max_tokens: opts.maxTokens ?? 1024,
     temperature: opts.temperature ?? 0.7,
+    // V4 Flash 默认 thinking，工作台直接生成内容需显式关闭（否则推理占 token 且 content 为空）
+    thinking: { type: 'disabled' },
   });
 
   const post = async () => {

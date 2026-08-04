@@ -13,7 +13,7 @@ async function callDeepSeek(prompt, attempt = 0) {
     method: 'POST',
     headers: { Authorization: 'Bearer ' + KEY, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model: 'deepseek-chat',
+      model: 'deepseek-v4-flash',
       messages: [{ role: 'user', content: prompt }],
       max_tokens: 8000,
       temperature: 0.8,

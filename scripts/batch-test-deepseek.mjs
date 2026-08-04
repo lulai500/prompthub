@@ -58,7 +58,7 @@ async function callDeepSeek(content, attempt = 0) {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + KEY, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'deepseek-chat',
+        model: 'deepseek-v4-flash',
         messages: [{ role: 'user', content }],
         max_tokens: 1024,
         temperature: 0.7,

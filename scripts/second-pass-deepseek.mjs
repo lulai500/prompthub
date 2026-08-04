@@ -41,7 +41,7 @@ async function callDeepSeek(content, attempt = 0) {
     const res = await fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'deepseek-chat', messages: [{ role: 'user', content }], max_tokens: 1024, temperature: 0.7 }),
+      body: JSON.stringify({ model: 'deepseek-v4-flash', messages: [{ role: 'user', content }], max_tokens: 1024, temperature: 0.7 }),
     });
     if (res.status === 429 || res.status >= 500) {
       if (attempt < 3) { await sleep(2000 * (attempt + 1)); return callDeepSeek(content, attempt + 1); }
