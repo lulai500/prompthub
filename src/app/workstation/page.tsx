@@ -14,6 +14,7 @@ import PausedGate from '@/components/workstation/PausedGate';
 import StatsPanel from '@/components/workstation/StatsPanel';
 import TaskForm from '@/components/workstation/TaskForm';
 import Kanban from '@/components/workstation/Kanban';
+import WorkstationGuide from '@/components/workstation/WorkstationGuide';
 import type { ClientProject, ClientTask } from '@/types';
 
 export const dynamic = 'force-dynamic';
@@ -23,8 +24,9 @@ export default async function WorkstationPage() {
   const role = await getCurrentRole();
 
   if (!user) redirect('/auth/login');
-  if (role === 'owner') redirect('/dashboard/clients');
-  if (role !== 'client') redirect('/');
+  // owner / 普通用户访问：显示引导页（说明工作台是客户专属），不再直接跳走
+  if (role === 'owner') return <WorkstationGuide role="owner" />;
+  if (role !== 'client') return <WorkstationGuide role="user" />;
 
   const supabase = createServerSupabaseClient();
 

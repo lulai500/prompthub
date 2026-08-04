@@ -18,6 +18,7 @@ import {
   LogIn,
   UserPlus,
   MessageSquare,
+  Wrench,
 } from 'lucide-react';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 import { createClient } from '@/lib/supabase/client';
@@ -241,16 +242,15 @@ export default function Header() {
                           <User className="w-4 h-4" />
                           Dashboard
                         </Link>
-                        {user.role === 'client' && (
-                          <Link
-                            href="/workstation"
-                            className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-brand-700 dark:text-brand-300 hover:bg-slate-100 dark:hover:bg-dark-700 transition-colors"
-                            onClick={() => setUserMenuOpen(false)}
-                          >
-                            <Settings className="w-4 h-4" />
-                            Workstation
-                          </Link>
-                        )}
+                        {/* 工作台：所有登录用户可见（client 进真实工作台，owner/user 见引导页） */}
+                        <Link
+                          href="/workstation"
+                          className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-brand-700 dark:text-brand-300 hover:bg-slate-100 dark:hover:bg-dark-700 transition-colors"
+                          onClick={() => setUserMenuOpen(false)}
+                        >
+                          <Wrench className="w-4 h-4" />
+                          Workstation
+                        </Link>
                         {user.role === 'owner' && (
                           <Link
                             href="/dashboard/clients"
