@@ -38,6 +38,38 @@ export default async function DashboardPage() {
   const favoriteCount = favoritesResult.count || 0;
   const folders = foldersResult.data || [];
 
+  // 最近使用（数据沉淀 → 复访理由）
+  const { data: usage } = await supabase
+    .from('user_usage')
+    .select('asset_type, asset_id, use_count, last_used_at')
+    .eq('user_id', user.id)
+    .order('last_used_at', { ascending: false })
+    .limit(8);
+  const usageList = usage || [];
+  const titleMap: Record<string, string> = {};
+  const linkMap: Record<string, string> = {};
+  if (usageList.length) {
+    const byType: Record<string, number[]> = {};
+    for (const u of usageList) {
+      (byType[u.asset_type] = byType[u.asset_type] || []).push(u.asset_id);
+    }
+    const tableMap: Record<string, string> = {
+      prompt: 'prompts',
+      skill: 'skills',
+      workflow: 'workflows',
+    };
+    for (const [type, ids] of Object.entries(byType)) {
+      const table = tableMap[type];
+      if (!table) continue;
+      const { data: rows } = await supabase.from(table).select('id, title, slug').in('id', ids);
+      for (const r of rows || []) {
+        const key = `${type}:${r.id}`;
+        titleMap[key] = r.title;
+        linkMap[key] = `/${table}/${r.slug || r.id}`;
+      }
+    }
+  }
+
   return (
     <div className="container-page py-10">
       {/* 欢迎区 */}
@@ -104,6 +136,41 @@ export default async function DashboardPage() {
           </p>
         </Link>
       </div>
+
+      {/* 最近使用 */}
+      {usageList.length > 0 && (
+        <div className="card p-6 mb-8">
+          <div className="flex items-center gap-2 mb-4">
+            <Clock className="w-5 h-5 text-brand-500" />
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+              Recently used
+            </h2>
+          </div>
+          <div className="space-y-2">
+            {usageList.map((u) => {
+              const key = `${u.asset_type}:${u.asset_id}`;
+              const title = titleMap[key] || `${u.asset_type} #${u.asset_id}`;
+              const href = linkMap[key];
+              if (!href) return null;
+              return (
+                <Link
+                  key={key}
+                  href={href}
+                  className="flex items-center justify-between gap-3 p-3 rounded-lg border border-slate-200 dark:border-dark-700 hover:border-brand-300 dark:hover:border-brand-700 transition-all group"
+                >
+                  <span className="badge-default text-xs shrink-0">{u.asset_type}</span>
+                  <span className="font-medium text-sm text-slate-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 truncate flex-1">
+                    {title}
+                  </span>
+                  <span className="text-xs text-slate-400 shrink-0">
+                    used {u.use_count}× · {formatDate(u.last_used_at)}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* 快捷入口 */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -3,7 +3,7 @@
 // 递增提示词被复制/使用次数（fire-and-forget）
 // ============================================================
 
-import { createAdminClient } from '@/lib/supabase/server';
+import { createServerSupabaseClient, createAdminClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 
 export async function POST(
@@ -38,6 +38,23 @@ export async function POST(
           .from('prompts')
           .update({ usage_count: (current.usage_count || 0) + 1 })
           .eq('id', promptId);
+      }
+    }
+
+    // 记录个人使用历史（登录用户 → user_usage，供"Recently used"）
+    const authClient = createServerSupabaseClient();
+    const {
+      data: { user },
+    } = await authClient.auth.getUser();
+    if (user) {
+      try {
+        await supabase.rpc('increment_user_usage', {
+          p_user_id: user.id,
+          p_asset_type: 'prompt',
+          p_asset_id: promptId,
+        });
+      } catch {
+        // 静默失败
       }
     }
 

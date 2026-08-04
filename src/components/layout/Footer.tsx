@@ -64,6 +64,12 @@ export default function Footer() {
               Support
             </Link>
             <Link
+              href="/docs/api"
+              className="hover:text-brand-600 dark:hover:text-brand-400 transition-colors"
+            >
+              API
+            </Link>
+            <Link
               href="/feedback"
               className="inline-flex items-center gap-1.5 hover:text-brand-600 dark:hover:text-brand-400 transition-colors"
             >
