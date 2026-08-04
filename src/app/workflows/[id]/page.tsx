@@ -7,10 +7,11 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Workflow as WorkflowIcon, ListOrdered, Eye, Lightbulb } from 'lucide-react';
 import { createAnonClient, getCurrentMembershipTier } from '@/lib/supabase/server';
-import { getCachedVersionInfo } from '@/lib/query-cache';
+import { getCachedVersionInfo, getCachedVerifyCount } from '@/lib/query-cache';
 import RelatedPillars, { type RelatedPillarItem } from '@/components/prompts/RelatedPillars';
 import ForkButton from '@/components/prompts/ForkButton';
 import AddToCollectionButton from '@/components/collections/AddToCollectionButton';
+import VerifyButton from '@/components/prompts/VerifyButton';
 import MembershipGate from '@/components/membership/MembershipGate';
 import type { Workflow, WorkflowStep } from '@/types';
 
@@ -43,6 +44,8 @@ export default async function WorkflowDetailPage({ params }: Props) {
 
   // 版本信息
   const versionInfo = await getCachedVersionInfo('workflow', workflow.id);
+  // "我测试过"验证数
+  const verifyCount = await getCachedVerifyCount('workflow', workflow.id);
 
   // steps 来自 JSONB，兜底确保为数组
   const steps: WorkflowStep[] = Array.isArray(workflow.steps) ? workflow.steps : [];
@@ -206,6 +209,7 @@ export default async function WorkflowDetailPage({ params }: Props) {
               </Link>
             )}
             <AddToCollectionButton assetType="workflow" assetId={workflow.id} />
+            <VerifyButton assetId={workflow.id} assetType="workflow" initialCount={verifyCount} />
             {isMember && (
               <ForkButton
                 data={{

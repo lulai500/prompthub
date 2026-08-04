@@ -22,9 +22,11 @@ import {
   getCachedPopularPrompts,
   getCachedPopularFillers,
   getCachedDailyPick,
+  getCachedVerifyCountsBatch,
 } from '@/lib/query-cache';
 import { getRecommendationsForUser, assetHref } from '@/lib/recommendations';
 import PromptCard from '@/components/prompts/PromptCard';
+import FirstVisitOnboarding from '@/components/onboarding/FirstVisitOnboarding';
 import type { Category, Prompt } from '@/types';
 
 export const dynamic = 'force-dynamic'; // 禁止静态缓存，确保数据实时
@@ -89,6 +91,13 @@ export default async function HomePage() {
   // 每日精选（按日期确定性轮换，驱动每日回访）
   const dateKey = new Date().toISOString().slice(0, 10);
   const dailyPick = await getCachedDailyPick(dateKey);
+
+  // 热门提示词验证数（"我测试过"，卡片可信徽标）
+  let homeVerifyMap: Record<number, number> = {};
+  if (prompts.length > 0) {
+    const verifyData = await getCachedVerifyCountsBatch('prompt', prompts.map((p) => p.id));
+    for (const v of verifyData) homeVerifyMap[v.asset_id] = v.count;
+  }
 
   // 英雄区统计 — 始终显示真实数据，未登录用户看到预览提示
   const stats = [
@@ -162,6 +171,9 @@ export default async function HomePage() {
           )}
         </div>
       </section>
+
+      {/* ---- 首次访问引导（未登录新访客）---- */}
+      {!isAuthenticated && <FirstVisitOnboarding show={!isAuthenticated} />}
 
       {/* ---- 分类区 ---- */}
       <section className="py-16 bg-slate-50 dark:bg-dark-950">
@@ -256,7 +268,7 @@ export default async function HomePage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {prompts.map((prompt) => (
-              <PromptCard key={prompt.id} prompt={prompt} />
+              <PromptCard key={prompt.id} prompt={prompt} verifyCount={homeVerifyMap[prompt.id] || 0} />
             ))}
           </div>
 

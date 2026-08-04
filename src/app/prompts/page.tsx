@@ -11,6 +11,7 @@ import {
   getCachedCategories,
   getCachedPromptList,
   getCachedPromptStatsBatch,
+  getCachedVerifyCountsBatch,
 } from '@/lib/query-cache';
 import { formatDate } from '@/lib/utils';
 import TagLinks from '@/components/prompts/TagLinks';
@@ -99,6 +100,13 @@ export default async function PromptsPage({
     rating_count: statsMap[p.id]?.rating_count || 0,
     favorite_count: statsMap[p.id]?.favorite_count || 0,
   }));
+
+  // 预取验证数（"我测试过"，列表可信徽标）
+  let verifyMap: Record<number, number> = {};
+  if (promptIds.length > 0) {
+    const verifyData = await getCachedVerifyCountsBatch('prompt', promptIds);
+    for (const v of verifyData) verifyMap[v.asset_id] = v.count;
+  }
 
   /** 构建排序链接的查询参数 */
   function buildSortUrl(targetSort: string) {
@@ -277,7 +285,7 @@ export default async function PromptsPage({
               {/* 卡片网格：响应式 1→2→3 列 */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {results.map((prompt) => (
-                  <PromptCard key={prompt.id} prompt={prompt} />
+                  <PromptCard key={prompt.id} prompt={prompt} verifyCount={verifyMap[prompt.id] || 0} />
                 ))}
               </div>
 

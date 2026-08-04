@@ -7,16 +7,18 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Copy, Tag, User, Star, Eye } from 'lucide-react';
+import { Copy, Tag, User, Star, Eye, BadgeCheck } from 'lucide-react';
 import type { Prompt } from '@/types';
 import { formatDate } from '@/lib/utils';
 import PromptPreviewModal from '@/components/prompts/PromptPreviewModal';
 
 interface PromptCardProps {
   prompt: Prompt;
+  /** "我测试过"验证数，>0 时显示绿色可信徽标 */
+  verifyCount?: number;
 }
 
-export default function PromptCard({ prompt }: PromptCardProps) {
+export default function PromptCard({ prompt, verifyCount }: PromptCardProps) {
   const [previewOpen, setPreviewOpen] = useState(false);
 
   // Only show "New" badge for prompts created within the last 7 days
@@ -90,6 +92,12 @@ export default function PromptCard({ prompt }: PromptCardProps) {
                 <span className="flex items-center gap-0.5">
                   <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
                   {Number(prompt.avg_rating).toFixed(1)}
+                </span>
+              )}
+              {(verifyCount ?? 0) > 0 && (
+                <span className="badge-success text-xs">
+                  <BadgeCheck className="w-3 h-3" />
+                  {verifyCount} tested
                 </span>
               )}
             </div>

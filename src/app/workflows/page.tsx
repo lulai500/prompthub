@@ -6,8 +6,10 @@
 // ============================================================
 
 import Link from 'next/link';
-import { Workflow as WorkflowIcon, FolderOpen, GitBranch, Lock } from 'lucide-react';
+import { Workflow as WorkflowIcon, FolderOpen, GitBranch } from 'lucide-react';
 import { createAnonClient } from '@/lib/supabase/server';
+import { getCachedVerifyCountsBatch } from '@/lib/query-cache';
+import WorkflowCard from '@/components/workflows/WorkflowCard';
 import type { Workflow, WorkflowCategory } from '@/types';
 
 // ISR：无登录态依赖，整页缓存 120s
@@ -36,6 +38,13 @@ export default async function WorkflowsPage({ searchParams }: { searchParams: Se
   const workflows = categorySlug
     ? allWorkflows.filter((w) => w.category?.slug === categorySlug)
     : allWorkflows;
+
+  // 验证数（"我测试过"，卡片可信徽标）
+  let workflowVerifyMap: Record<number, number> = {};
+  if (workflows.length > 0) {
+    const verifyData = await getCachedVerifyCountsBatch('workflow', workflows.map((w) => w.id));
+    for (const v of verifyData) workflowVerifyMap[v.asset_id] = v.count;
+  }
 
   return (
     <div className="container-page py-10">
@@ -104,38 +113,7 @@ export default async function WorkflowsPage({ searchParams }: { searchParams: Se
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {workflows.map((w) => (
-                <Link
-                  key={w.id}
-                  href={`/workflows/${w.slug || w.id}`}
-                  className="card p-5 group hover:border-brand-300 dark:hover:border-brand-700 transition-all"
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="badge-primary">{w.workflow_type}</span>
-                    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded-full">
-                      <Lock className="w-3 h-3" /> Members
-                    </span>
-                  </div>
-                  <h3 className="font-semibold text-slate-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
-                    {w.title}
-                  </h3>
-                  {w.description && (
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">
-                      {w.description}
-                    </p>
-                  )}
-                  {w.tools_required.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mt-3">
-                      {w.tools_required.slice(0, 3).map((t) => (
-                        <span key={t} className="badge-default text-xs">
-                          {t}
-                        </span>
-                      ))}
-                      <span className="badge-default text-xs">
-                        {Array.isArray(w.steps) ? w.steps.length : 0} steps
-                      </span>
-                    </div>
-                  )}
-                </Link>
+                <WorkflowCard key={w.id} workflow={w} verifyCount={workflowVerifyMap[w.id] || 0} />
               ))}
             </div>
           )}

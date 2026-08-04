@@ -7,11 +7,12 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Wrench, Eye, Boxes } from 'lucide-react';
 import { createAnonClient, getCurrentMembershipTier } from '@/lib/supabase/server';
-import { getCachedVersionInfo } from '@/lib/query-cache';
+import { getCachedVersionInfo, getCachedVerifyCount } from '@/lib/query-cache';
 import RelatedPillars, { type RelatedPillarItem } from '@/components/prompts/RelatedPillars';
 import SkillFormatExport from '@/components/skills/SkillFormatExport';
 import ForkButton from '@/components/prompts/ForkButton';
 import AddToCollectionButton from '@/components/collections/AddToCollectionButton';
+import VerifyButton from '@/components/prompts/VerifyButton';
 import MembershipGate from '@/components/membership/MembershipGate';
 import type { Skill } from '@/types';
 
@@ -44,6 +45,8 @@ export default async function SkillDetailPage({ params }: Props) {
 
   // 版本信息
   const versionInfo = await getCachedVersionInfo('skill', skill.id);
+  // "我测试过"验证数
+  const verifyCount = await getCachedVerifyCount('skill', skill.id);
 
   // 会员门控：仅非 free 会员可见完整内容（当前无会员 → 全员预览）
   const isMember = (await getCurrentMembershipTier()) !== 'free';
@@ -166,6 +169,7 @@ export default async function SkillDetailPage({ params }: Props) {
               </Link>
             )}
             <AddToCollectionButton assetType="skill" assetId={skill.id} />
+            <VerifyButton assetId={skill.id} assetType="skill" initialCount={verifyCount} />
             {isMember && (
               <ForkButton
                 data={{

@@ -12,12 +12,14 @@ import { track } from '@vercel/analytics';
 import { createClient } from '@/lib/supabase/client';
 
 interface VerifyButtonProps {
-  promptId: number;
+  assetId: number;
+  /** 资产类型，默认 prompt（三支柱通用） */
+  assetType?: 'prompt' | 'skill' | 'workflow';
   /** 服务端预取的初始验证数 */
   initialCount: number;
 }
 
-export default function VerifyButton({ promptId, initialCount }: VerifyButtonProps) {
+export default function VerifyButton({ assetId, assetType = 'prompt', initialCount }: VerifyButtonProps) {
   const router = useRouter();
   const supabase = createClient();
 
@@ -28,9 +30,9 @@ export default function VerifyButton({ promptId, initialCount }: VerifyButtonPro
 
   useEffect(() => {
     checkVerified();
-  }, [promptId]);
+  }, [assetId, assetType]);
 
-  /** 检查当前用户是否已验证该提示词 */
+  /** 检查当前用户是否已验证该资产 */
   async function checkVerified() {
     const {
       data: { session },
@@ -38,10 +40,11 @@ export default function VerifyButton({ promptId, initialCount }: VerifyButtonPro
     if (session?.user) {
       setUser(session.user);
       const { data } = await supabase
-        .from('verifications')
+        .from('asset_verifications')
         .select('id')
         .eq('user_id', session.user.id)
-        .eq('prompt_id', promptId)
+        .eq('asset_type', assetType)
+        .eq('asset_id', assetId)
         .maybeSingle();
       setVerified(!!data);
     }
@@ -60,22 +63,24 @@ export default function VerifyButton({ promptId, initialCount }: VerifyButtonPro
     if (verified) {
       // 取消验证
       await supabase
-        .from('verifications')
+        .from('asset_verifications')
         .delete()
         .eq('user_id', user.id)
-        .eq('prompt_id', promptId);
+        .eq('asset_type', assetType)
+        .eq('asset_id', assetId);
       setVerified(false);
       setCount((c) => Math.max(0, c - 1));
-      track('prompt_verify', { prompt_id: promptId, action: 'remove' });
+      track('asset_verify', { asset_type: assetType, asset_id: assetId, action: 'remove' });
     } else {
       // 添加验证
-      await supabase.from('verifications').insert({
+      await supabase.from('asset_verifications').insert({
         user_id: user.id,
-        prompt_id: promptId,
+        asset_type: assetType,
+        asset_id: assetId,
       });
       setVerified(true);
       setCount((c) => c + 1);
-      track('prompt_verify', { prompt_id: promptId, action: 'add' });
+      track('asset_verify', { asset_type: assetType, asset_id: assetId, action: 'add' });
     }
     setLoading(false);
   }
@@ -93,8 +98,8 @@ export default function VerifyButton({ promptId, initialCount }: VerifyButtonPro
         user
           ? verified
             ? 'Remove your verification'
-            : 'Mark this prompt as tested'
-          : 'Sign in to verify this prompt'
+            : 'Mark this as tested'
+          : 'Sign in to verify this'
       }
     >
       <BadgeCheck

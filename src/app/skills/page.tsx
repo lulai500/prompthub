@@ -6,8 +6,10 @@
 // ============================================================
 
 import Link from 'next/link';
-import { Wrench, FolderOpen, Boxes, Lock } from 'lucide-react';
+import { Wrench, FolderOpen, Boxes } from 'lucide-react';
 import { createAnonClient } from '@/lib/supabase/server';
+import { getCachedVerifyCountsBatch } from '@/lib/query-cache';
+import SkillCard from '@/components/skills/SkillCard';
 import type { Skill, SkillCategory } from '@/types';
 
 // ISR：无登录态依赖，整页缓存 120s
@@ -36,6 +38,13 @@ export default async function SkillsPage({ searchParams }: { searchParams: Searc
   const skills = categorySlug
     ? allSkills.filter((s) => s.category?.slug === categorySlug)
     : allSkills;
+
+  // 验证数（"我测试过"，卡片可信徽标）
+  let skillVerifyMap: Record<number, number> = {};
+  if (skills.length > 0) {
+    const verifyData = await getCachedVerifyCountsBatch('skill', skills.map((s) => s.id));
+    for (const v of verifyData) skillVerifyMap[v.asset_id] = v.count;
+  }
 
   return (
     <div className="container-page py-10">
@@ -105,35 +114,7 @@ export default async function SkillsPage({ searchParams }: { searchParams: Searc
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {skills.map((skill) => (
-                <Link
-                  key={skill.id}
-                  href={`/skills/${skill.slug || skill.id}`}
-                  className="card p-5 group hover:border-brand-300 dark:hover:border-brand-700 transition-all"
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="badge-primary">{skill.skill_format}</span>
-                    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded-full">
-                      <Lock className="w-3 h-3" /> Members
-                    </span>
-                  </div>
-                  <h3 className="font-semibold text-slate-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
-                    {skill.title}
-                  </h3>
-                  {skill.description && (
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">
-                      {skill.description}
-                    </p>
-                  )}
-                  {skill.compatible_models.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mt-3">
-                      {skill.compatible_models.slice(0, 3).map((m) => (
-                        <span key={m} className="badge-default text-xs">
-                          {m}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </Link>
+                <SkillCard key={skill.id} skill={skill} verifyCount={skillVerifyMap[skill.id] || 0} />
               ))}
             </div>
           )}

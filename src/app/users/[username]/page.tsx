@@ -88,7 +88,7 @@ export default async function UserProfilePage({ params }: Props) {
     supabase.from('prompts').select('id', { count: 'exact' }).eq('author_id', profile.id).eq('is_published', true),
     supabase.from('skills').select('id', { count: 'exact' }).eq('author_id', profile.id).eq('is_published', true),
     supabase.from('workflows').select('id', { count: 'exact' }).eq('author_id', profile.id).eq('is_published', true),
-    supabase.from('verifications').select('id', { count: 'exact' }).eq('user_id', profile.id),
+    supabase.from('asset_verifications').select('id', { count: 'exact' }).eq('user_id', profile.id),
   ]);
   const promptCount = promptsRes.count || 0;
   const skillCount = skillsRes.count || 0;

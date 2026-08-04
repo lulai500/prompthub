@@ -92,15 +92,41 @@ async function callTool(name: string, args: Record<string, any>) {
 
     switch (name) {
       case 'search_prompts': {
+        // 分类解析
+        let categoryId: number | null = null;
+        if (args.category) {
+          const { data: cat } = await supabase.from('categories').select('id').eq('slug', args.category).single();
+          if (cat) categoryId = cat.id;
+        }
+        // 有查询词 → 全文检索 RPC（相关度排序，复用 GIN 索引）
+        if (args.query) {
+          const { data: hits, error: rpcErr } = await supabase.rpc('search_prompts_fts', {
+            p_search: args.query,
+            p_category_id: categoryId,
+            p_tag: args.tag || null,
+            p_sort: 'latest',
+            p_page: 1,
+            p_limit: limit,
+          });
+          if (rpcErr) return err('Search unavailable');
+          const ids = (hits || []).map((r: { id: number | string }) => Number(r.id));
+          if (ids.length === 0) return text('[]');
+          const { data } = await supabase
+            .from('prompts')
+            .select('id, title, slug, description, model_name, tags, category:categories(name)')
+            .eq('is_published', true)
+            .in('id', ids);
+          const byId: Record<number, Record<string, unknown>> = {};
+          for (const r of (data || []) as Record<string, unknown>[]) byId[Number(r.id)] = r;
+          const ordered = ids.map((id: number) => byId[id]).filter(Boolean);
+          return text(JSON.stringify(ordered, null, 2));
+        }
+        // 无查询词 → 原分类/标签查询
         let q = supabase
           .from('prompts')
           .select('id, title, slug, description, model_name, tags, category:categories(name)')
           .eq('is_published', true);
-        if (args.query) q = q.or(`title.ilike.%${args.query}%,description.ilike.%${args.query}%`);
-        if (args.category) {
-          const { data: cat } = await supabase.from('categories').select('id').eq('slug', args.category).single();
-          if (cat) q = q.eq('category_id', cat.id);
-        }
+        if (categoryId) q = q.eq('category_id', categoryId);
         if (args.tag) q = q.contains('tags', [args.tag]);
         const { data } = await q.order('usage_count', { ascending: false }).limit(limit);
         return text(JSON.stringify(data || [], null, 2));

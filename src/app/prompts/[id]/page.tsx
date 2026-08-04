@@ -93,8 +93,8 @@ export default async function PromptDetailPage({ params }: Props) {
   // 预取评分统计（ISR 缓存）
   const promptStats = await getCachedPromptStats(p.id);
 
-  // "我测试过"验证数（ISR 缓存；verifications 表未建时优雅降级为 0）
-  const verifyCount = await getCachedVerifyCount(p.id);
+  // "我测试过"验证数（ISR 缓存；asset_verifications 表未建时优雅降级为 0）
+  const verifyCount = await getCachedVerifyCount('prompt', p.id);
 
   // 版本信息（asset_versions 表未建时优雅降级为 0）
   const versionInfo = await getCachedVersionInfo('prompt', p.id);
@@ -363,7 +363,7 @@ export default async function PromptDetailPage({ params }: Props) {
             <div className="space-y-3">
               <CopyButton text={p.content} label="Copy Prompt" promptId={p.id} />
               <FavoriteButton promptId={p.id} />
-              <VerifyButton promptId={p.id} initialCount={verifyCount} />
+              <VerifyButton assetId={p.id} assetType="prompt" initialCount={verifyCount} />
               <ForkButton
                 data={{
                   type: 'prompt',

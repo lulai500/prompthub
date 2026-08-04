@@ -128,6 +128,10 @@
     @apply badge bg-slate-100 dark:bg-dark-700 text-slate-600 dark:text-slate-400;
   }
 
+  .badge-success {
+    @apply badge bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300;
+  }
+
   /* 链接样式 */
   .link {
     @apply text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300

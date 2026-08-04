@@ -44,9 +44,9 @@ export async function GET(
     .eq('is_published', true);
 
   if (tag) q = q.contains('tags', [tag]);
-  if (search) q = q.or(`title.ilike.%${search}%,description.ilike.%${search}%`);
 
   // 分类筛选（各资源用对应分类表）
+  let categoryId: number | null = null;
   if (category) {
     const catTable =
       resource === 'prompts'
@@ -55,8 +55,39 @@ export async function GET(
         ? 'skill_categories'
         : 'workflow_categories';
     const { data: cat } = await supabase.from(catTable).select('id').eq('slug', category).single();
-    if (cat) q = q.eq('category_id', cat.id);
+    if (cat) categoryId = cat.id;
   }
+
+  // prompts 搜索 → 全文检索 RPC（相关度排序，复用 GIN 索引）
+  if (resource === 'prompts' && search) {
+    const page = Math.floor(offset / limit) + 1;
+    const { data: hits, error: rpcErr } = await supabase.rpc('search_prompts_fts', {
+      p_search: search,
+      p_category_id: categoryId,
+      p_tag: tag || null,
+      p_sort: 'latest',
+      p_page: page,
+      p_limit: limit,
+    });
+    if (rpcErr) {
+      return NextResponse.json({ error: 'Search unavailable.' }, { status: 500 });
+    }
+    const ids = (hits || []).map((r: { id: number | string }) => Number(r.id));
+    const total = Number((hits as { total?: number }[] | null)?.[0]?.total) || 0;
+    if (ids.length === 0) {
+      return NextResponse.json({ data: [], meta: { count: 0, limit, offset } });
+    }
+    const { data } = await supabase.from('prompts').select('*').eq('is_published', true).in('id', ids);
+    const byId: Record<number, Record<string, unknown>> = {};
+    for (const r of (data || []) as Record<string, unknown>[]) byId[Number(r.id)] = r;
+    const ordered = ids.map((id: number) => byId[id]).filter(Boolean) as Record<string, unknown>[];
+    return NextResponse.json({
+      data: ordered.map((r) => publicAssetRow('prompts', r)),
+      meta: { count: total, limit, offset },
+    });
+  }
+
+  if (categoryId) q = q.eq('category_id', categoryId);
 
   const { data, count } = await q
     .order('created_at', { ascending: false })
