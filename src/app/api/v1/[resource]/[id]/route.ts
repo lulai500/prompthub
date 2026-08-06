@@ -4,7 +4,7 @@
 // ============================================================
 
 import { NextResponse } from 'next/server';
-import { createAnonClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { VALID_RESOURCES, publicAssetRow, type ApiResource } from '@/lib/public-api';
 
@@ -28,7 +28,7 @@ export async function GET(
     );
   }
 
-  const supabase = createAnonClient();
+  const supabase = createAdminClient();
   const isNumeric = /^\d+$/.test(id);
   let q = supabase.from(resource).select('*').eq('is_published', true);
   if (isNumeric) {

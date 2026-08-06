@@ -17,7 +17,7 @@ import {
   Flame,
   Layers,
 } from 'lucide-react';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createServerSupabaseClient, createAdminClient } from '@/lib/supabase/server';
 import { formatDate } from '@/lib/utils';
 import { computeStreakStats } from '@/lib/streaks';
 import PromptCard from '@/components/prompts/PromptCard';
@@ -44,6 +44,7 @@ function contributorTier(total: number): {
 
 export default async function UserProfilePage({ params }: Props) {
   const supabase = createServerSupabaseClient();
+  const admin = createAdminClient();
   const { username } = params;
 
   // 查找用户（username 与 id 分开查：PostgREST .or() 对混合类型列不短路，
@@ -86,8 +87,8 @@ export default async function UserProfilePage({ params }: Props) {
   // ---- 三支柱贡献数（已发布）----
   const [promptsRes, skillsRes, workflowsRes, verifiedRes] = await Promise.all([
     supabase.from('prompts').select('id', { count: 'exact' }).eq('author_id', profile.id).eq('is_published', true),
-    supabase.from('skills').select('id', { count: 'exact' }).eq('author_id', profile.id).eq('is_published', true),
-    supabase.from('workflows').select('id', { count: 'exact' }).eq('author_id', profile.id).eq('is_published', true),
+    admin.from('skills').select('id', { count: 'exact' }).eq('author_id', profile.id).eq('is_published', true),
+    admin.from('workflows').select('id', { count: 'exact' }).eq('author_id', profile.id).eq('is_published', true),
     supabase.from('asset_verifications').select('id', { count: 'exact' }).eq('user_id', profile.id),
   ]);
   const promptCount = promptsRes.count || 0;

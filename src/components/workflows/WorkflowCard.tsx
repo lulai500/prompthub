@@ -41,7 +41,7 @@ export default function WorkflowCard({ workflow: w, verifyCount }: WorkflowCardP
             </span>
           ))}
           <span className="badge-default text-xs">
-            {Array.isArray(w.steps) ? w.steps.length : 0} steps
+            {w.steps_count ?? 0} steps
           </span>
         </div>
       )}

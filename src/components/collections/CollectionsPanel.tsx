@@ -43,6 +43,13 @@ export default function CollectionsPanel() {
   async function create() {
     if (!title.trim()) return;
     setBusy(true);
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session?.user) {
+      setBusy(false);
+      return;
+    }
     const slug =
       title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') +
       '-' +
@@ -51,6 +58,7 @@ export default function CollectionsPanel() {
       title: title.trim(),
       slug,
       is_public: isPublic,
+      user_id: session.user.id,
     });
     setTitle('');
     setBusy(false);

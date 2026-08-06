@@ -10,8 +10,15 @@ import { createServerSupabaseClient, createAdminClient } from '@/lib/supabase/se
 import { checkRateLimit } from '@/lib/rate-limit';
 import { matchTask } from '@/lib/task-match';
 import { getCachedTaskAssets } from '@/lib/query-cache';
-import { callDeepSeek, buildAiMessages, clientTitle } from '@/lib/workstation';
-import { getClientQuota } from '@/lib/client-quota';
+import {
+  callDeepSeek,
+  buildAiMessages,
+  buildProAiMessages,
+  clientTitle,
+  getProAssetContents,
+  type ProAssetContent,
+} from '@/lib/workstation';
+import { effectiveTier, getClientQuota } from '@/lib/client-quota';
 
 // Vercel Hobby 默认函数超时 10s，DeepSeek 非流式可能 20-60s
 export const maxDuration = 60;
@@ -63,6 +70,8 @@ export async function POST(request: Request) {
   if (client.status === 'paused') {
     return NextResponse.json({ error: 'This client account is paused.' }, { status: 403 });
   }
+  // Pro 客户才能调取 skills/workflows 内容；免费客户严格只能用提示词
+  const isPro = effectiveTier(client.tier, client.pro_expires_at) === 'pro';
 
   // 4. 匹配预置任务 + 聚合资产
   const match = matchTask(query);
@@ -81,8 +90,8 @@ export async function POST(request: Request) {
       note: 'AI generation is not configured yet. Here is the assembled kit for this task.',
       matchedTask: { slug: match.task.slug, title: match.task.title, description: match.task.description },
       prompts,
-      skills,
-      workflows,
+      skills: isPro ? skills : [],
+      workflows: isPro ? workflows : [],
     });
   }
 
@@ -98,6 +107,11 @@ export async function POST(request: Request) {
     );
   }
 
+  // 5-c. Pro 客户才拉取 skill/workflow 全文（放 402 之后，额度已超时不白查库）
+  const proAssets: ProAssetContent = isPro
+    ? await getProAssetContents(admin, skills, workflows)
+    : { skills: [], workflows: [] };
+
   // 6. 建任务（in_progress）
   const { data: taskRow, error: insertErr } = await admin
     .from('client_tasks')
@@ -110,8 +124,8 @@ export async function POST(request: Request) {
       matched_task_slug: match.task.slug,
       asset_ids: [
         ...prompts.slice(0, 3).map((p) => ({ type: 'prompt', id: p.id })),
-        ...skills.slice(0, 3).map((s) => ({ type: 'skill', id: s.id })),
-        ...workflows.slice(0, 3).map((w) => ({ type: 'workflow', id: w.id })),
+        ...(isPro ? skills.slice(0, 3).map((s) => ({ type: 'skill', id: s.id })) : []),
+        ...(isPro ? workflows.slice(0, 3).map((w) => ({ type: 'workflow', id: w.id })) : []),
       ],
     })
     .select('id')
@@ -123,12 +137,16 @@ export async function POST(request: Request) {
 
   // 7. 调用 DeepSeek 生成
   try {
-    const messages = buildAiMessages(
-      bestPrompt?.content,
-      match.task.title,
-      match.task.description,
-      query
-    );
+    const messages = isPro
+      ? buildProAiMessages({
+          promptContent: bestPrompt?.content,
+          taskTitle: match.task.title,
+          taskDescription: match.task.description,
+          userInput: query,
+          skills: proAssets.skills,
+          workflows: proAssets.workflows,
+        })
+      : buildAiMessages(bestPrompt?.content, match.task.title, match.task.description, query);
     const { text, tokens } = await callDeepSeek(messages);
 
     // 8. 写回结果（completed）+ 审计字段
@@ -159,8 +177,8 @@ export async function POST(request: Request) {
       result: text,
       matchedTask: { slug: match.task.slug, title: match.task.title },
       prompts,
-      skills,
-      workflows,
+      skills: isPro ? skills : [],
+      workflows: isPro ? workflows : [],
     });
   } catch (err) {
     // 10. 生成失败：任务标记 failed，客户可新建重试

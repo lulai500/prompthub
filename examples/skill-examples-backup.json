@@ -1,0 +1,30 @@
+{
+  "updated_at": "2026-08-05T13:51:06.354Z",
+  "skills": {
+    "senior-code-reviewer": {
+      "id": 1,
+      "title": "Senior Code Reviewer",
+      "old_example_output": "### Finding 1 (Critical) — SQL Injection\n`query = \"SELECT * FROM users WHERE id = \" + user_id`\n\nConcatenating user input into SQL is an injection vector.\n\n**Fix:**\n```python\ncursor.execute(\"SELECT * FROM users WHERE id = %s\", (user_id,))\n```\n\n**Top 3 priorities:**\n1. Parameterize all SQL queries\n2. Add input validation for `user_id`\n3. Add a regression test for injection cases"
+    },
+    "sql-query-optimizer": {
+      "id": 6,
+      "title": "SQL Query Optimizer",
+      "old_example_output": "Problem: `SELECT * FROM orders o JOIN customers c ON o.customer_id = c.id WHERE c.country = 'US'` scans 8M rows.\n\nFix 1 — Filter first, join later:\n```sql\nSELECT o.* FROM orders o\nJOIN (SELECT id FROM customers WHERE country = 'US') c ON o.customer_id = c.id;\n```\n\nFix 2 — Add index:\n```sql\nCREATE INDEX idx_customers_country ON customers (country);\nCREATE INDEX idx_orders_customer ON orders (customer_id);\n```\n\nVerify with: `EXPLAIN ANALYZE SELECT ...`"
+    },
+    "blog-post-writer": {
+      "id": 7,
+      "title": "Blog Post Writer",
+      "old_example_output": "Title: 5 Prompt Rules That Make AI 10x More Useful (No Coding Needed)\n\nOutline:\n- H2: Why prompts fail for most people\n- H2: Rule 1 — Give the AI a role\n- H2: Rule 2 — Bound the input\n- H2: Rule 3 — Specify the output format\n- H2: Rule 4 — Add one example\n- H2: Rule 5 — Iterate, don't restart\n- H2: A before/after example\n- H2: Your first prompt exercise\n- H2: Conclusion + CTA"
+    },
+    "video-script": {
+      "id": 25,
+      "title": "Video Script Writer",
+      "old_example_output": "# Hook (0–3s)\nVisual: creator looks straight into lens\nScript: \"You've been editing video wrong your whole life.\"\n\n# Core (3–25s)\nVisual: fast cuts of the fix in action\nScript: \"The real shortcut isn't a plugin. It's one keyboard shortcut…\"\n\n# CTA (25–30s)\nScript: \"Follow for one pro tip every day.\""
+    },
+    "deep-research-assistant": {
+      "id": 13,
+      "title": "Deep Research Assistant",
+      "old_example_output": "Executive summary\nAI coding agents moved from demos to daily drivers in 2026: ~45% of\nsurveyed dev teams report using an agent weekly (source: State of Dev\nSurvey 2026).\n\nFindings\n1. Adoption is led by small teams (2-10 devs).\n2. Top cited risk is security review of agent-written code.\n3. Cost per completed task dropped ~30% YoY.\n\nOpen questions\n- Long-term effect on code review staffing.\n- Reliability across non-English codebases."
+    }
+  }
+}

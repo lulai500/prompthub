@@ -243,6 +243,8 @@ export interface Workflow {
   title: string;
   slug: string | null;
   description: string | null;
+  /** 步骤数（steps_count 生成列，公开元数据；steps 本体仅会员/服务端可读） */
+  steps_count?: number | null;
   steps: WorkflowStep[];
   workflow_type: WorkflowType;
   tools_required: string[];

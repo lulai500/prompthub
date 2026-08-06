@@ -4,8 +4,9 @@
 // 供 /api/workstation/execute 与 workstation/dashboard 页面共用
 // ============================================================
 
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { fillVariables, estimateTokens } from '@/lib/prompt-utils';
-import type { Client, ClientProject, ClientTask } from '@/types';
+import type { Client, ClientProject, ClientTask, WorkflowStep } from '@/types';
 
 /** DeepSeek 调用返回 */
 export interface DeepSeekResult {
@@ -93,6 +94,145 @@ export function buildAiMessages(
   }
   return [
     { role: 'system', content: system },
+    { role: 'user', content: userInput },
+  ];
+}
+
+// ============================================================
+// Pro 客户专用：把匹配到的 skill/workflow 全文取出来，
+// 拼进 AI 生成消息（仅服务端使用，绝不进 API 响应/公开缓存）
+// ============================================================
+
+export interface ProSkillContent {
+  id: number;
+  title: string;
+  description: string | null;
+  content: string;
+  skill_format: string;
+}
+
+export interface ProWorkflowContent {
+  id: number;
+  title: string;
+  description: string | null;
+  steps: WorkflowStep[];
+  workflow_type: string;
+  config_content: string | null;
+  expected_output: string | null;
+  tools_required: string[];
+}
+
+export interface ProAssetContent {
+  skills: ProSkillContent[];
+  workflows: ProWorkflowContent[];
+}
+
+/**
+ * 按传入顺序取 top 3 技能/工作流的全文（admin 直查，不走公开缓存）。
+ * 仅限 Pro 客户生成消息使用；.in() 不保序，用 Map 重排回传入顺序。
+ */
+export async function getProAssetContents(
+  admin: SupabaseClient,
+  skills: { id: number }[],
+  workflows: { id: number }[]
+): Promise<ProAssetContent> {
+  const skillIds = skills.slice(0, 3).map((s) => s.id);
+  const workflowIds = workflows.slice(0, 3).map((w) => w.id);
+
+  const [skillRes, workflowRes] = await Promise.all([
+    skillIds.length
+      ? admin
+          .from('skills')
+          .select('id, title, description, content, skill_format')
+          .in('id', skillIds)
+          .eq('is_published', true)
+      : Promise.resolve({ data: [] }),
+    workflowIds.length
+      ? admin
+          .from('workflows')
+          .select('id, title, description, steps, workflow_type, config_content, expected_output, tools_required')
+          .in('id', workflowIds)
+          .eq('is_published', true)
+      : Promise.resolve({ data: [] }),
+  ]);
+
+  const skillMap = new Map((skillRes.data || []).map((r) => [Number(r.id), r]));
+  const workflowMap = new Map((workflowRes.data || []).map((r) => [Number(r.id), r]));
+
+  return {
+    skills: skillIds.map((id) => skillMap.get(id)).filter(Boolean) as ProSkillContent[],
+    workflows: workflowIds.map((id) => workflowMap.get(id)).filter(Boolean) as ProWorkflowContent[],
+  };
+}
+
+/**
+ * Pro 客户的消息组装：prompt（变量填充）→ skills 全文 → workflows 全文。
+ * 缺失段自动跳过；skill/workflow 内容不做 fillVariables（参考文档，非模板）。
+ */
+export function buildProAiMessages(input: {
+  promptContent: string | null | undefined;
+  taskTitle: string;
+  taskDescription: string;
+  userInput: string;
+  skills: ProSkillContent[];
+  workflows: ProWorkflowContent[];
+}): { role: string; content: string }[] {
+  const { promptContent, taskTitle, taskDescription, userInput, skills, workflows } = input;
+  const sections: string[] = [];
+
+  // 0) 基底角色 + 主指令（prompt，变量填充）
+  let base = `You are an expert assistant. Task: ${taskTitle}. ${taskDescription}`;
+  if (promptContent) {
+    base += `\n\n${fillVariables(promptContent, {
+      input: userInput,
+      topic: userInput,
+      query: userInput,
+      text: userInput,
+      content: userInput,
+    })}`;
+  }
+  sections.push(base);
+
+  // 1) 技能：能力/参考
+  if (skills.length) {
+    sections.push(
+      `=== RELEVANT SKILLS — apply these techniques when applicable ===\n` +
+        skills
+          .map((s, i) => {
+            let b = `### ${i + 1}. ${s.title} [${s.skill_format}]`;
+            if (s.description) b += `\n${s.description}`;
+            b += `\n${s.content}`;
+            return b;
+          })
+          .join('\n\n')
+    );
+  }
+
+  // 2) 工作流：过程/顺序
+  if (workflows.length) {
+    sections.push(
+      `=== RECOMMENDED WORKFLOW — follow these steps ===\n` +
+        workflows
+          .map((w, i) => {
+            let b = `### ${i + 1}. ${w.title} [${w.workflow_type}]`;
+            if (w.description) b += `\n${w.description}`;
+            if (w.steps?.length) {
+              b += '\nSteps:';
+              for (const st of w.steps) {
+                b += `\n${st.step}. [${st.tool}] ${st.title} — ${st.action}` + (st.config ? ` (config: ${st.config})` : '');
+              }
+            }
+            if (w.tools_required?.length) b += `\nTools required: ${w.tools_required.join(', ')}`;
+            if (w.expected_output) b += `\nExpected output: ${w.expected_output}`;
+            if (w.config_content) b += `\nConfig: ${w.config_content}`;
+            return b;
+          })
+          .join('\n\n')
+    );
+  }
+
+  return [
+    { role: 'system', content: sections.filter(Boolean).join('\n\n') },
     { role: 'user', content: userInput },
   ];
 }

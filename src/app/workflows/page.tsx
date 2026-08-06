@@ -7,7 +7,7 @@
 
 import Link from 'next/link';
 import { Workflow as WorkflowIcon, FolderOpen, GitBranch } from 'lucide-react';
-import { createAnonClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import { getCachedVerifyCountsBatch } from '@/lib/query-cache';
 import WorkflowCard from '@/components/workflows/WorkflowCard';
 import type { Workflow, WorkflowCategory } from '@/types';
@@ -20,20 +20,23 @@ interface SearchParams {
 }
 
 export default async function WorkflowsPage({ searchParams }: { searchParams: SearchParams }) {
-  const supabase = createAnonClient();
+  const supabase = createAdminClient();
   const categorySlug = searchParams.category || '';
 
   const [categoriesRes, workflowsRes] = await Promise.all([
     supabase.from('workflow_categories').select('*').order('sort_order', { ascending: true }),
     supabase
       .from('workflows')
-      .select('*, category:workflow_categories(*)')
+      .select(
+        'id, title, slug, description, workflow_type, tools_required, tags, usage_count, steps_count, created_at, category:workflow_categories(*)'
+      )
       .eq('is_published', true)
       .order('created_at', { ascending: false }),
   ]);
 
   const categories: WorkflowCategory[] = categoriesRes.data || [];
-  const allWorkflows: Workflow[] = workflowsRes.data || [];
+  // 列表只取元数据列（RLS 收紧后 steps 等受保护），断言为 Workflow 供卡片展示
+  const allWorkflows: Workflow[] = (workflowsRes.data || []) as unknown as Workflow[];
   // 骨架阶段数据量小，在内存筛选；内容规模化后改为 SQL 筛选
   const workflows = categorySlug
     ? allWorkflows.filter((w) => w.category?.slug === categorySlug)

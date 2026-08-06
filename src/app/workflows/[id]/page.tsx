@@ -5,8 +5,9 @@
 
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import type { Metadata } from 'next';
 import { ArrowLeft, Workflow as WorkflowIcon, ListOrdered, Eye, Lightbulb } from 'lucide-react';
-import { createAnonClient, getCurrentMembershipTier } from '@/lib/supabase/server';
+import { createAdminClient, getCurrentMembershipTier } from '@/lib/supabase/server';
 import { getCachedVersionInfo, getCachedVerifyCount } from '@/lib/query-cache';
 import RelatedPillars, { type RelatedPillarItem } from '@/components/prompts/RelatedPillars';
 import ForkButton from '@/components/prompts/ForkButton';
@@ -22,11 +23,9 @@ interface Props {
   params: { id: string };
 }
 
-export default async function WorkflowDetailPage({ params }: Props) {
-  const supabase = createAnonClient();
-  const { id } = params;
-
-  // 通过 slug 或 id 查询
+/** 按 slug 或 id 查询已发布工作流（内容仅服务端 admin 可读，generateMetadata 与页面共用） */
+async function fetchWorkflow(id: string) {
+  const supabase = createAdminClient();
   const isNumericId = /^\d+$/.test(id);
   let query = supabase
     .from('workflows')
@@ -37,9 +36,56 @@ export default async function WorkflowDetailPage({ params }: Props) {
   } else {
     query = query.eq('slug', id);
   }
-
   const { data } = await query.single();
-  const workflow = data as Workflow | null;
+  return data as Workflow | null;
+}
+
+/** 详情页 SEO 元数据：独立标题/描述 + OG + Twitter Card（与 prompts 详情页对齐） */
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const workflow = await fetchWorkflow(params.id);
+  if (!workflow) return { title: 'Workflow not found' };
+
+  const site = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+  const slug = workflow.slug || String(workflow.id);
+  const url = `${site}/workflows/${slug}`;
+  const description =
+    workflow.description ||
+    `A multi-step ${workflow.workflow_type || 'AI'} workflow. Reproduce, export, adapt at PromptHub.`;
+
+  // 动态 OG 图（/api/og 生成 1200x630 卡片）
+  const og = new URLSearchParams({
+    title: workflow.title,
+    category: workflow.category?.name || 'AI Workflow',
+    model: workflow.tools_required?.[0] || workflow.workflow_type || '',
+  });
+  const ogImage = `${site}/api/og?${og.toString()}`;
+
+  return {
+    title: `${workflow.title} — AI Workflow`,
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      title: workflow.title,
+      description,
+      type: 'article',
+      url,
+      siteName: 'PromptHub',
+      images: [{ url: ogImage, width: 1200, height: 630, alt: workflow.title }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: workflow.title,
+      description,
+      images: [ogImage],
+    },
+  };
+}
+
+export default async function WorkflowDetailPage({ params }: Props) {
+  const { id } = params;
+  // 完整内容（steps 等）仅服务端 admin 读取；anon 已无 workflows 表权限
+  const supabase = createAdminClient();
+  const workflow = await fetchWorkflow(id);
   if (!workflow) notFound();
 
   // 版本信息
@@ -93,8 +139,29 @@ export default async function WorkflowDetailPage({ params }: Props) {
     ];
   }
 
+  // ---- JSON-LD 结构化数据（CreativeWork，争取富结果）----
+  const site = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+  const slug = workflow.slug || String(workflow.id);
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'CreativeWork',
+    name: workflow.title,
+    description: workflow.description,
+    url: `${site}/workflows/${slug}`,
+    ...(workflow.tags && workflow.tags.length > 0
+      ? { keywords: workflow.tags.join(', ') }
+      : {}),
+    datePublished: workflow.created_at,
+    dateModified: workflow.updated_at,
+  };
+
   return (
     <div className="container-page py-10">
+      {/* JSON-LD 结构化数据 */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       {/* 返回链接 */}
       <Link
         href="/workflows"

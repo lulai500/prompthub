@@ -5,8 +5,9 @@
 
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import type { Metadata } from 'next';
 import { ArrowLeft, Wrench, Eye, Boxes } from 'lucide-react';
-import { createAnonClient, getCurrentMembershipTier } from '@/lib/supabase/server';
+import { createAdminClient, getCurrentMembershipTier } from '@/lib/supabase/server';
 import { getCachedVersionInfo, getCachedVerifyCount } from '@/lib/query-cache';
 import RelatedPillars, { type RelatedPillarItem } from '@/components/prompts/RelatedPillars';
 import SkillFormatExport from '@/components/skills/SkillFormatExport';
@@ -23,11 +24,9 @@ interface Props {
   params: { id: string };
 }
 
-export default async function SkillDetailPage({ params }: Props) {
-  const supabase = createAnonClient();
-  const { id } = params;
-
-  // 通过 slug 或 id 查询
+/** 按 slug 或 id 查询已发布技能（内容仅服务端 admin 可读，generateMetadata 与页面共用） */
+async function fetchSkill(id: string) {
+  const supabase = createAdminClient();
   const isNumericId = /^\d+$/.test(id);
   let query = supabase
     .from('skills')
@@ -38,9 +37,56 @@ export default async function SkillDetailPage({ params }: Props) {
   } else {
     query = query.eq('slug', id);
   }
-
   const { data } = await query.single();
-  const skill = data as Skill | null;
+  return data as Skill | null;
+}
+
+/** 详情页 SEO 元数据：独立标题/描述 + OG + Twitter Card（与 prompts 详情页对齐） */
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const skill = await fetchSkill(params.id);
+  if (!skill) return { title: 'Skill not found' };
+
+  const site = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+  const slug = skill.slug || String(skill.id);
+  const url = `${site}/skills/${slug}`;
+  const description =
+    skill.description ||
+    `An installable ${skill.skill_format || 'AI'} skill. Tested and open-source at PromptHub.`;
+
+  // 动态 OG 图（/api/og 生成 1200x630 卡片）
+  const og = new URLSearchParams({
+    title: skill.title,
+    category: skill.category?.name || 'AI Skill',
+    model: skill.compatible_models?.[0] || skill.skill_format || '',
+  });
+  const ogImage = `${site}/api/og?${og.toString()}`;
+
+  return {
+    title: `${skill.title} — AI Skill`,
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      title: skill.title,
+      description,
+      type: 'article',
+      url,
+      siteName: 'PromptHub',
+      images: [{ url: ogImage, width: 1200, height: 630, alt: skill.title }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: skill.title,
+      description,
+      images: [ogImage],
+    },
+  };
+}
+
+export default async function SkillDetailPage({ params }: Props) {
+  const { id } = params;
+  // 完整内容（content 等）仅服务端 admin 读取；anon 已无 skills 表权限
+  const supabase = createAdminClient();
+  const skill = await fetchSkill(id);
   if (!skill) notFound();
 
   // 版本信息
@@ -88,8 +134,27 @@ export default async function SkillDetailPage({ params }: Props) {
     ];
   }
 
+  // ---- JSON-LD 结构化数据（CreativeWork，争取富结果）----
+  const site = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+  const slug = skill.slug || String(skill.id);
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'CreativeWork',
+    name: skill.title,
+    description: skill.description,
+    url: `${site}/skills/${slug}`,
+    ...(skill.tags && skill.tags.length > 0 ? { keywords: skill.tags.join(', ') } : {}),
+    datePublished: skill.created_at,
+    dateModified: skill.updated_at,
+  };
+
   return (
     <div className="container-page py-10">
+      {/* JSON-LD 结构化数据 */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       {/* 返回链接 */}
       <Link
         href="/skills"

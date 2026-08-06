@@ -6,7 +6,7 @@
 // ============================================================
 
 import { NextResponse } from 'next/server';
-import { createAnonClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { VALID_RESOURCES, publicAssetRow, type ApiResource } from '@/lib/public-api';
 
@@ -37,7 +37,7 @@ export async function GET(
   const tag = searchParams.get('tag') || '';
   const search = searchParams.get('search') || '';
 
-  const supabase = createAnonClient();
+  const supabase = createAdminClient();
   let q = supabase
     .from(resource)
     .select('*', { count: 'exact' })

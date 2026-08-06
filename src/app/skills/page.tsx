@@ -7,7 +7,7 @@
 
 import Link from 'next/link';
 import { Wrench, FolderOpen, Boxes } from 'lucide-react';
-import { createAnonClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import { getCachedVerifyCountsBatch } from '@/lib/query-cache';
 import SkillCard from '@/components/skills/SkillCard';
 import type { Skill, SkillCategory } from '@/types';
@@ -20,20 +20,23 @@ interface SearchParams {
 }
 
 export default async function SkillsPage({ searchParams }: { searchParams: SearchParams }) {
-  const supabase = createAnonClient();
+  const supabase = createAdminClient();
   const categorySlug = searchParams.category || '';
 
   const [categoriesRes, skillsRes] = await Promise.all([
     supabase.from('skill_categories').select('*').order('sort_order', { ascending: true }),
     supabase
       .from('skills')
-      .select('*, category:skill_categories(*)')
+      .select(
+        'id, title, slug, description, skill_format, compatible_models, tags, usage_count, created_at, category:skill_categories(*)'
+      )
       .eq('is_published', true)
       .order('created_at', { ascending: false }),
   ]);
 
   const categories: SkillCategory[] = categoriesRes.data || [];
-  const allSkills: Skill[] = skillsRes.data || [];
+  // 列表只取元数据列（RLS 收紧后 content 等受保护），断言为 Skill 供卡片展示
+  const allSkills: Skill[] = (skillsRes.data || []) as unknown as Skill[];
   // 骨架阶段数据量小，在内存筛选；内容规模化后改为 SQL 筛选
   const skills = categorySlug
     ? allSkills.filter((s) => s.category?.slug === categorySlug)

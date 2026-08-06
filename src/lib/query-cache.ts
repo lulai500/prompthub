@@ -7,7 +7,7 @@
 // ============================================================
 
 import { unstable_cache } from 'next/cache';
-import { createAnonClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import type { Category, Prompt } from '@/types';
 
 // 公开数据缓存时长（秒）：120s = 列表/详情数据最多滞后 2 分钟
@@ -16,7 +16,7 @@ const REVALIDATE = 120;
 /** 全部分类（首页/列表页共用） */
 export const getCachedCategories = unstable_cache(
   async (): Promise<Category[]> => {
-    const supabase = createAnonClient();
+    const supabase = createAdminClient();
     const { data } = await supabase
       .from('categories')
       .select('*')
@@ -30,7 +30,7 @@ export const getCachedCategories = unstable_cache(
 /** 已发布提示词总数 */
 export const getCachedPromptCount = unstable_cache(
   async (): Promise<number> => {
-    const supabase = createAnonClient();
+    const supabase = createAdminClient();
     const { count } = await supabase
       .from('prompts')
       .select('*', { count: 'exact', head: true })
@@ -44,7 +44,7 @@ export const getCachedPromptCount = unstable_cache(
 /** 每分类热门提示词（首页，key 含分类 id 与条数） */
 export const getCachedPopularPrompts = unstable_cache(
   async (categoryIds: number[], perCategory: number): Promise<Prompt[]> => {
-    const supabase = createAnonClient();
+    const supabase = createAdminClient();
     const categoryPromises = categoryIds.map(async (cid) => {
       const { data } = await supabase
         .from('prompts')
@@ -65,7 +65,7 @@ export const getCachedPopularPrompts = unstable_cache(
 /** 全局热门补足（首页，key 含已取 id） */
 export const getCachedPopularFillers = unstable_cache(
   async (excludeIds: number[], limit: number): Promise<Prompt[]> => {
-    const supabase = createAnonClient();
+    const supabase = createAdminClient();
     const { data } = await supabase
       .from('prompts')
       .select('*, category:categories(*)')
@@ -89,7 +89,7 @@ export const getCachedPromptList = unstable_cache(
     sort: string;
     limit: number;
   }): Promise<{ data: Prompt[]; count: number }> => {
-    const supabase = createAnonClient();
+    const supabase = createAdminClient();
 
     // 有搜索 → 走全文检索 RPC（相关度排序，复用 GIN 索引；返回 id 列表再回表）
     if (params.search) {
@@ -146,7 +146,7 @@ export const getCachedPromptList = unstable_cache(
 /** 单条提示词详情（key 含 slug/id） */
 export const getCachedPromptDetail = unstable_cache(
   async (id: string): Promise<Prompt | null> => {
-    const supabase = createAnonClient();
+    const supabase = createAdminClient();
     const isNumericId = /^\d+$/.test(id);
     let query = supabase
       .from('prompts')
@@ -167,7 +167,7 @@ export const getCachedPromptDetail = unstable_cache(
 /** 提示词统计（评分/收藏数） */
 export const getCachedPromptStats = unstable_cache(
   async (promptId: number) => {
-    const supabase = createAnonClient();
+    const supabase = createAdminClient();
     const { data } = await supabase
       .from('prompt_stats')
       .select('*')
@@ -182,7 +182,7 @@ export const getCachedPromptStats = unstable_cache(
 /** 批量提示词统计（列表页，key 含 id 集合） */
 export const getCachedPromptStatsBatch = unstable_cache(
   async (promptIds: number[]) => {
-    const supabase = createAnonClient();
+    const supabase = createAdminClient();
     const { data } = await supabase
       .from('prompt_stats')
       .select('*')
@@ -196,7 +196,7 @@ export const getCachedPromptStatsBatch = unstable_cache(
 /** Tag 落地页提示词列表（key 含标签） */
 export const getCachedTagPrompts = unstable_cache(
   async (tag: string) => {
-    const supabase = createAnonClient();
+    const supabase = createAdminClient();
     const { data, count } = await supabase
       .from('prompts')
       .select('*, category:categories(*)', { count: 'exact' })
@@ -213,7 +213,7 @@ export const getCachedTagPrompts = unstable_cache(
 /** 全部标签及其数量（Tag 索引页/侧边栏用） */
 export const getCachedAllTags = unstable_cache(
   async (): Promise<{ tag: string; count: number }[]> => {
-    const supabase = createAnonClient();
+    const supabase = createAdminClient();
     const { data } = await supabase.from('prompts').select('tags').eq('is_published', true);
     const counts: Record<string, number> = {};
     for (const p of data || []) {
@@ -232,7 +232,7 @@ export const getCachedAllTags = unstable_cache(
 /** 按任务聚合三支柱资产（key 含任务 slug 与标签） */
 export const getCachedTaskAssets = unstable_cache(
   async (taskSlug: string, tags: string[]) => {
-    const supabase = createAnonClient();
+    const supabase = createAdminClient();
     const [prompts, skills, workflows] = await Promise.all([
       supabase
         .from('prompts')
@@ -274,7 +274,7 @@ export const getCachedBundleAssets = unstable_cache(
     skillSlugs: string[],
     workflowSlugs: string[]
   ) => {
-    const supabase = createAnonClient();
+    const supabase = createAdminClient();
     const [prompts, skills, workflows] = await Promise.all([
       promptSlugs.length > 0
         ? supabase
@@ -311,7 +311,7 @@ export const getCachedBundleAssets = unstable_cache(
 /** 版本信息（数量 + 最后更新时间） */
 export const getCachedVersionInfo = unstable_cache(
   async (type: string, id: number) => {
-    const supabase = createAnonClient();
+    const supabase = createAdminClient();
     const { data } = await supabase
       .from('asset_versions')
       .select('created_at')
@@ -330,10 +330,13 @@ export const getCachedVersionInfo = unstable_cache(
   { revalidate: 300 }
 );
 
-/** 版本历史列表（最新在前，最多 20 条） */
+/** 版本历史列表（最新在前，最多 20 条）
+ * 用 service_role 读取：asset_versions.content 已对 anon 收紧，
+ * 页面端按会员门控决定渲染完整快照或 200 字预览。
+ */
 export const getCachedVersions = unstable_cache(
   async (type: string, id: number) => {
-    const supabase = createAnonClient();
+    const supabase = createAdminClient();
     const { data } = await supabase
       .from('asset_versions')
       .select('id, content, created_at')
@@ -350,7 +353,7 @@ export const getCachedVersions = unstable_cache(
 /** 每日精选：按日期确定性轮换一条精选提示词（驱动每日回访习惯） */
 export const getCachedDailyPick = unstable_cache(
   async (dateKey: string) => {
-    const supabase = createAnonClient();
+    const supabase = createAdminClient();
     const { count } = await supabase
       .from('prompts')
       .select('id', { count: 'exact', head: true })
@@ -385,7 +388,7 @@ export const getCachedDailyPick = unstable_cache(
 /** 跨板块"搭配使用"推荐（提示词 → 技能/工作流，key 含提示词 id 与标签） */
 export const getCachedRelatedItems = unstable_cache(
   async (promptId: number, tags: string[]) => {
-    const supabase = createAnonClient();
+    const supabase = createAdminClient();
     const [skillsRes, workflowsRes] = await Promise.all([
       supabase
         .from('skills')
@@ -409,7 +412,7 @@ export const getCachedRelatedItems = unstable_cache(
 /** 验证数（"我测试过"，三支柱通用） */
 export const getCachedVerifyCount = unstable_cache(
   async (assetType: string, assetId: number): Promise<number> => {
-    const supabase = createAnonClient();
+    const supabase = createAdminClient();
     const { count } = await supabase
       .from('asset_verifications')
       .select('id', { count: 'exact', head: true })
@@ -425,7 +428,7 @@ export const getCachedVerifyCount = unstable_cache(
 export const getCachedVerifyCountsBatch = unstable_cache(
   async (assetType: string, assetIds: number[]): Promise<{ asset_id: number; count: number }[]> => {
     if (assetIds.length === 0) return [];
-    const supabase = createAnonClient();
+    const supabase = createAdminClient();
     const { data } = await supabase
       .from('asset_verifications')
       .select('asset_id')

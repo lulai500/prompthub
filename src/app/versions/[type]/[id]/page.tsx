@@ -6,7 +6,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { History, ArrowLeft } from 'lucide-react';
-import { createAnonClient, getCurrentMembershipTier } from '@/lib/supabase/server';
+import { createAdminClient, getCurrentMembershipTier } from '@/lib/supabase/server';
 import { getCachedVersions, getCachedPromptDetail } from '@/lib/query-cache';
 import MembershipGate from '@/components/membership/MembershipGate';
 import { formatDate } from '@/lib/utils';
@@ -20,7 +20,7 @@ interface Props {
 }
 
 async function fetchAssetTitle(type: string, id: number): Promise<string> {
-  const supabase = createAnonClient();
+  const supabase = createAdminClient();
   if (type === 'prompt') {
     const p = await getCachedPromptDetail(String(id));
     return p?.title || '';

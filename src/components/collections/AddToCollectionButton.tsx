@@ -66,13 +66,20 @@ export default function AddToCollectionButton({ assetType, assetId }: Props) {
   async function createAndAdd() {
     if (!newTitle.trim()) return;
     setBusy(true);
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session?.user) {
+      setBusy(false);
+      return;
+    }
     const slug =
       newTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') +
       '-' +
       Math.random().toString(36).slice(2, 6);
     const { data } = await supabase
       .from('collections')
-      .insert({ title: newTitle.trim(), slug, is_public: true })
+      .insert({ title: newTitle.trim(), slug, is_public: true, user_id: session.user.id })
       .select('id')
       .single();
     if (data) {

@@ -7,7 +7,7 @@
 // ============================================================
 
 import { NextResponse } from 'next/server';
-import { createAnonClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import { checkRateLimit } from '@/lib/rate-limit';
 
 // ---- 工具定义 ----
@@ -83,7 +83,7 @@ const TOOLS = [
 // ---- 工具执行 ----
 async function callTool(name: string, args: Record<string, any>) {
   try {
-    const supabase = createAnonClient();
+    const supabase = createAdminClient();
     const limit = Math.min(Math.max(parseInt(args.limit) || 5, 1), 20);
     const byIdOrSlug = (table: string, id: string, select: string) => {
       let q = supabase.from(table).select(select).eq('is_published', true);
