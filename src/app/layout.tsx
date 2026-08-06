@@ -4,7 +4,7 @@
 // ============================================================
 
 import type { Metadata } from 'next';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import './globals.css';
 import { Analytics } from '@vercel/analytics/react';
 import Header from '@/components/layout/Header';
@@ -39,6 +39,9 @@ export default function RootLayout({
   const isLight = themeCookie === 'light';
   const htmlClass = isLight ? '' : 'dark';
 
+  // /admin/* 由 middleware 打 x-admin 标记 → 不渲染公共页头/页脚（管理后台独立壳层）
+  const isAdmin = headers().get('x-admin') === '1';
+
   return (
     <html lang="en" className={htmlClass} suppressHydrationWarning>
       <head>
@@ -63,9 +66,9 @@ export default function RootLayout({
         />
       </head>
       <body className="flex flex-col min-h-screen">
-        <Header />
+        {!isAdmin && <Header />}
         <main className="flex-1">{children}</main>
-        <Footer />
+        {!isAdmin && <Footer />}
         {/* Vercel Web Analytics：访问量与页面浏览（本地/未启用时自动 no-op） */}
         <Analytics />
       </body>

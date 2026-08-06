@@ -1,26 +1,13 @@
 // ============================================================
-// POST /api/dashboard/clients
+// POST /api/admin/clients
 // 站主创建客户账号：admin.createUser 生成登录账号 + 临时密码，
 // 建 clients 档案 + 默认项目。仅 owner 可调用。
 // ============================================================
 
 import { NextResponse } from 'next/server';
-import { randomBytes } from 'crypto';
 import { createServerSupabaseClient, createAdminClient, getCurrentRole } from '@/lib/supabase/server';
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
-
-/** 生成 12 位临时密码（去歧义字符） */
-function generateTempPassword(): string {
-  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
-  const bytes = randomBytes(12);
-  let pwd = '';
-  for (let i = 0; i < 12; i++) pwd += alphabet[bytes[i] % alphabet.length];
-  // 确保含大小写与数字，满足常见强度要求
-  if (!/[A-Z]/.test(pwd) || !/[a-z]/.test(pwd) || !/[0-9]/.test(pwd)) {
-    return 'A' + pwd.slice(1, 9) + '7' + pwd.slice(9);
-  }
-  return pwd;
-}
+import { generateTempPassword } from '@/lib/client-utils';
 
 export async function POST(request: Request) {
   // 1. 限流（按站主用户 id）
@@ -82,10 +69,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Failed to finalize account.' }, { status: 500 });
   }
 
-  // 6. 建 clients 档案 + 默认项目
+  // 6. 建 clients 档案（含 denormalized email）+ 默认项目
   const { data: clientRow, error: clientErr } = await admin
     .from('clients')
-    .insert({ account_id: newUserId, name, owner_id: user.id, status: 'active' })
+    .insert({ account_id: newUserId, name, email, owner_id: user.id, status: 'active' })
     .select('id')
     .single();
   if (clientErr || !clientRow) {

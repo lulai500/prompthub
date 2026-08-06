@@ -62,8 +62,13 @@ function getClientIP(request: NextRequest): string {
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  // /admin/* 打标记：根布局据此跳过公共页头/页脚（管理后台独立壳层）
+  const requestHeaders = new Headers(request.headers);
+  if (pathname.startsWith('/admin')) {
+    requestHeaders.set('x-admin', '1');
+  }
   let response = NextResponse.next({
-    request: { headers: request.headers },
+    request: { headers: requestHeaders },
   });
 
   // ---- Rate limiting for sensitive routes ----

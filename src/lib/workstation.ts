@@ -1,7 +1,7 @@
 // ============================================================
 // 客户工作站 - 服务端助手
 // AI 调用 / 消息组装 / 客户身份 / 统计聚合
-// 供 /api/workstation/execute 与 workstation/dashboard 页面共用
+// 供 /api/workstation/tasks 系列（start/run/status）与工作站页面共用
 // ============================================================
 
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -294,4 +294,33 @@ export function clientTitle(input: string, fallback = 'Untitled task'): string {
   const t = (input || '').replace(/\s+/g, ' ').trim();
   if (!t) return fallback;
   return t.length > 60 ? t.slice(0, 60).trimEnd() + '…' : t;
+}
+
+/**
+ * DeepSeek 调用失败 → 面向客户的友好文案（海外客户，英文）。
+ * 不要把 HTTP 码/内部错误直接透传给客户；统一映射为可操作提示。
+ */
+export function mapDeepSeekError(err: unknown): string {
+  const message = err instanceof Error ? err.message : String(err);
+  const code = (err as { code?: string } | null)?.code;
+  if (code === 'NO_KEY') {
+    return 'AI generation is not configured yet. Contact the account owner.';
+  }
+  if (message.includes('429')) {
+    return 'The AI service is busy right now. Click Retry in a minute.';
+  }
+  if (
+    message.includes('abort') ||
+    message.includes('AbortError') ||
+    message.toLowerCase().includes('timeout')
+  ) {
+    return 'Generation took too long. Click Retry to try again.';
+  }
+  if (message.includes('empty')) {
+    return 'The AI returned an empty result. Click Retry or rephrase your task.';
+  }
+  if (message.includes('HTTP 502') || message.includes('HTTP 503') || message.includes('HTTP 504')) {
+    return 'The AI service had a temporary problem. Click Retry.';
+  }
+  return 'Generation failed. Click Retry to try again.';
 }

@@ -1,7 +1,7 @@
 'use client';
 // ============================================================
 // 站主暂停/恢复客户按钮
-// PATCH /api/dashboard/clients/[id] → 刷新
+// PATCH /api/admin/clients/[id] → 刷新
 // ============================================================
 
 import { useState } from 'react';
@@ -26,7 +26,7 @@ export default function ClientStatusButton({
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/dashboard/clients/${clientId}`, {
+      const res = await fetch(`/api/admin/clients/${clientId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: paused ? 'active' : 'paused' }),

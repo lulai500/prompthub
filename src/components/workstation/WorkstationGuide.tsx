@@ -22,7 +22,7 @@ export default function WorkstationGuide({ role }: { role: 'owner' | 'user' }) {
             : 'The workstation is a private workspace for client accounts. Contact the account owner to get access.'}
         </p>
         {role === 'owner' ? (
-          <Link href="/dashboard/clients" className="btn-primary">
+          <Link href="/admin/clients" className="btn-primary">
             <UserPlus className="w-4 h-4" />
             Manage clients
             <ArrowRight className="w-4 h-4" />

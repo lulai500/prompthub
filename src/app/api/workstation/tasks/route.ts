@@ -1,8 +1,7 @@
 // ============================================================
-// POST /api/workstation/execute
-// 客户工作站 AI 执行：输入任务 → 匹配预置任务 → 取最相关提示词
-// → DeepSeek 生成内容 → 存为 client_tasks 交付物。
-// 全程 service_role 写结果（客户不可篡改），RLS 保证跨客户隔离。
+// POST /api/workstation/tasks — 创建任务（快速返回，不阻塞）
+// 鉴权→限流→验项目→客户状态→匹配任务→聚合资产→配额检查→插入 pending 任务行
+// 返回 taskId + 组装包；AI 生成由 POST /api/workstation/tasks/[id]/run 执行
 // ============================================================
 
 import { NextResponse } from 'next/server';
@@ -10,21 +9,13 @@ import { createServerSupabaseClient, createAdminClient } from '@/lib/supabase/se
 import { checkRateLimit } from '@/lib/rate-limit';
 import { matchTask } from '@/lib/task-match';
 import { getCachedTaskAssets } from '@/lib/query-cache';
-import {
-  callDeepSeek,
-  buildAiMessages,
-  buildProAiMessages,
-  clientTitle,
-  getProAssetContents,
-  type ProAssetContent,
-} from '@/lib/workstation';
+import { clientTitle } from '@/lib/workstation';
 import { effectiveTier, getClientQuota } from '@/lib/client-quota';
 
-// Vercel Hobby 默认函数超时 10s，DeepSeek 非流式可能 20-60s
 export const maxDuration = 60;
 export const runtime = 'nodejs';
 
-const EXECUTE_WINDOW = { maxRequests: 10, windowMs: 5 * 60_000 }; // 10 次/5 分钟
+const START_WINDOW = { maxRequests: 10, windowMs: 5 * 60_000 }; // 10 次/5 分钟
 
 export async function POST(request: Request) {
   // 1. 鉴权 + 限流
@@ -35,9 +26,9 @@ export async function POST(request: Request) {
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  const rl = checkRateLimit(`ws-execute:${user.id}`, EXECUTE_WINDOW.maxRequests, EXECUTE_WINDOW.windowMs);
+  const rl = checkRateLimit(`ws-start:${user.id}`, START_WINDOW.maxRequests, START_WINDOW.windowMs);
   if (!rl.allowed) {
-    return NextResponse.json({ error: 'Too many executions. Wait a few minutes and retry.' }, { status: 429 });
+    return NextResponse.json({ error: 'Too many requests. Wait a few minutes and retry.' }, { status: 429 });
   }
 
   const body = await request.json().catch(() => ({}));
@@ -67,8 +58,11 @@ export async function POST(request: Request) {
   if (!client) {
     return NextResponse.json({ error: 'Client not found.' }, { status: 404 });
   }
-  if (client.status === 'paused') {
-    return NextResponse.json({ error: 'This client account is paused.' }, { status: 403 });
+  if (client.status === 'paused' || client.status === 'archived') {
+    return NextResponse.json(
+      { error: 'This client account is not active.' },
+      { status: 403 }
+    );
   }
   // Pro 客户才能调取 skills/workflows 内容；免费客户严格只能用提示词
   const isPro = effectiveTier(client.tier, client.pro_expires_at) === 'pro';
@@ -76,14 +70,17 @@ export async function POST(request: Request) {
   // 4. 匹配预置任务 + 聚合资产
   const match = matchTask(query);
   if (!match) {
-    return NextResponse.json({
-      error: 'Could not match that to a task. Try describing the outcome — e.g. "write a blog post" or "debug my code".',
-    }, { status: 422 });
+    return NextResponse.json(
+      {
+        error:
+          'Could not match that to a task. Try describing the outcome — e.g. "write a blog post" or "debug my code".',
+      },
+      { status: 422 }
+    );
   }
   const { prompts, skills, workflows } = await getCachedTaskAssets(match.task.slug, match.task.tags);
-  const bestPrompt = prompts[0] as { id?: number; content?: string } | undefined;
 
-  // 5. 无 AI key → 降级为"组装方案"（不建任务行）
+  // 5. 无 AI key → 降级为"组装方案"（不建任务行，不耗配额）
   if (!(process.env.DEEPSEEK_API_KEY || process.env.DEEPSEEK_KEY)) {
     return NextResponse.json({
       generated: false,
@@ -95,7 +92,7 @@ export async function POST(request: Request) {
     });
   }
 
-  // 5-b. 配额检查：当月已用 >= 额度 → 402（发起执行即计；无 key 降级不耗额度）
+  // 6. 配额检查：当月已用 >= 额度 → 402（pending 不计，发起即占 in_progress/completed）
   const quota = await getClientQuota(admin, client);
   if (!quota.allowed) {
     return NextResponse.json(
@@ -107,12 +104,7 @@ export async function POST(request: Request) {
     );
   }
 
-  // 5-c. Pro 客户才拉取 skill/workflow 全文（放 402 之后，额度已超时不白查库）
-  const proAssets: ProAssetContent = isPro
-    ? await getProAssetContents(admin, skills, workflows)
-    : { skills: [], workflows: [] };
-
-  // 6. 建任务（in_progress）
+  // 7. 建任务（pending，快速返回；AI 生成在 run 端点执行）
   const { data: taskRow, error: insertErr } = await admin
     .from('client_tasks')
     .insert({
@@ -120,7 +112,7 @@ export async function POST(request: Request) {
       client_id: client.id,
       title: clientTitle(query),
       input: query,
-      status: 'in_progress',
+      status: 'pending',
       matched_task_slug: match.task.slug,
       asset_ids: [
         ...prompts.slice(0, 3).map((p) => ({ type: 'prompt', id: p.id })),
@@ -133,57 +125,13 @@ export async function POST(request: Request) {
   if (insertErr || !taskRow) {
     return NextResponse.json({ error: 'Failed to create task.' }, { status: 500 });
   }
-  const taskId = taskRow.id;
 
-  // 7. 调用 DeepSeek 生成
-  try {
-    const messages = isPro
-      ? buildProAiMessages({
-          promptContent: bestPrompt?.content,
-          taskTitle: match.task.title,
-          taskDescription: match.task.description,
-          userInput: query,
-          skills: proAssets.skills,
-          workflows: proAssets.workflows,
-        })
-      : buildAiMessages(bestPrompt?.content, match.task.title, match.task.description, query);
-    const { text, tokens } = await callDeepSeek(messages);
-
-    // 8. 写回结果（completed）+ 审计字段
-    const { error: updateErr } = await admin
-      .from('client_tasks')
-      .update({
-        status: 'completed',
-        result: text,
-        tokens,
-        prompt_id: bestPrompt?.id ?? null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', taskId);
-    if (updateErr) {
-      // 结果已生成但写库失败：标记 failed，错误信息仍可返回给客户
-      await admin.from('client_tasks').update({ status: 'failed' }).eq('id', taskId);
-      return NextResponse.json({ error: 'Generated but failed to save the result.' }, { status: 500 });
-    }
-
-    // 9. 客户活跃记录（streak / 周报数据源）
-    await admin
-      .from('user_activity')
-      .upsert({ user_id: client.account_id, active_date: new Date().toISOString().slice(0, 10) });
-
-    return NextResponse.json({
-      generated: true,
-      taskId,
-      result: text,
-      matchedTask: { slug: match.task.slug, title: match.task.title },
-      prompts,
-      skills: isPro ? skills : [],
-      workflows: isPro ? workflows : [],
-    });
-  } catch (err) {
-    // 10. 生成失败：任务标记 failed，客户可新建重试
-    const message = err instanceof Error ? err.message : 'Generation failed.';
-    await admin.from('client_tasks').update({ status: 'failed', updated_at: new Date().toISOString() }).eq('id', taskId);
-    return NextResponse.json({ error: `Generation failed: ${message}` }, { status: 502 });
-  }
+  return NextResponse.json({
+    generated: true,
+    taskId: taskRow.id,
+    matchedTask: { slug: match.task.slug, title: match.task.title, description: match.task.description },
+    prompts,
+    skills: isPro ? skills : [],
+    workflows: isPro ? workflows : [],
+  });
 }

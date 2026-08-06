@@ -33,8 +33,8 @@ export async function POST() {
     .eq('account_id', user.id)
     .maybeSingle();
   if (!client) return NextResponse.json({ error: 'No client account.' }, { status: 403 });
-  if (client.status === 'paused') {
-    return NextResponse.json({ error: 'This client account is paused.' }, { status: 403 });
+  if (client.status === 'paused' || client.status === 'archived') {
+    return NextResponse.json({ error: 'This client account is not active.' }, { status: 403 });
   }
 
   if (!lsConfigured()) {

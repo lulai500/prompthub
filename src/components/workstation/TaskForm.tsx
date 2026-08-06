@@ -1,13 +1,17 @@
 'use client';
 // ============================================================
-// 客户工作站 - 新建任务表单
-// 选项目 + 输入任务 → POST /api/workstation/execute → 刷新
+// 客户工作站 - 新建任务表单（异步）
+// 提交流程：POST /api/workstation/tasks 建任务(秒回) →
+//           fire-and-forget POST .../tasks/[id]/run →
+//           轮询 GET .../tasks/[id] 直至终态 → router.refresh()
+// 页面不阻塞；失败/超时在表单内提示，并可从看板 Retry。
 // ============================================================
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, Sparkles, AlertCircle, CheckCircle2 } from 'lucide-react';
 import UpgradeButton from '@/components/workstation/UpgradeButton';
+import { pollTaskStatus } from '@/lib/workstation-poll';
 
 const SUGGESTIONS = ['write a blog post', 'draft a marketing email', 'debug my API code', 'analyze sales data'];
 
@@ -20,11 +24,45 @@ interface TaskFormProps {
 export default function TaskForm({ projects, canUpgrade = false, quotaReached = false }: TaskFormProps) {
   const router = useRouter();
   const [projectId, setProjectId] = useState(projects[0]?.id ?? 0);
+  const [localProjects, setLocalProjects] = useState(projects);
+  const [showNewProject, setShowNewProject] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState('');
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [quotaHit, setQuotaHit] = useState(false);
+
+  /** 内联新建项目 → 创建成功后选中新项目 */
+  async function handleCreateProject() {
+    const name = newName.trim();
+    if (!name) return;
+    setCreating(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/workstation/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || 'Failed to create project.');
+        return;
+      }
+      const p = data.project;
+      setLocalProjects((prev) => [...prev, p]);
+      setProjectId(p.id);
+      setNewName('');
+      setShowNewProject(false);
+      router.refresh();
+    } catch {
+      setError('Network error. Try again.');
+    } finally {
+      setCreating(false);
+    }
+  }
 
   async function run(q: string) {
     if (!projectId) {
@@ -37,36 +75,54 @@ export default function TaskForm({ projects, canUpgrade = false, quotaReached = 
     setSuccess(null);
     setQuotaHit(false);
     try {
-      const res = await fetch('/api/workstation/execute', {
+      // 1. start：快速建任务（pending）
+      const startRes = await fetch('/api/workstation/tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ projectId, query: q.trim() }),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        if (data.quota) {
-          // 月度配额用尽
+      const startData = await startRes.json();
+      if (!startRes.ok) {
+        if (startData.quota) {
           setQuotaHit(true);
-          setError(data.error || 'Monthly limit reached.');
+          setError(startData.error || 'Monthly limit reached.');
         } else {
-          setError(data.error || 'Failed to run the task.');
+          setError(startData.error || 'Failed to run the task.');
         }
-      } else if (data.generated && data.result) {
-        // 真生成：任务已完成，看板会出现交付物
-        setSuccess('Task completed — the deliverable is in your board below.');
-        setQuery('');
-      } else {
-        // 降级（无 AI key / 未匹配）：明确告知，不假装成功
-        setError(
-          data.note ||
-            'AI generation is not available right now. The task was not created — try again shortly.'
-        );
+        return;
       }
+      if (!startData.generated) {
+        // 降级（无 AI key）：明确告知组装包，不假装成功
+        setError(startData.note || 'AI generation is not available right now. Try again shortly.');
+        return;
+      }
+
+      const taskId = startData.taskId as number;
+      setQuery('');
+      setSuccess(null);
+
+      // 2. run：fire-and-forget（keepalive 尽量在页面关闭前送达）
+      fetch(`/api/workstation/tasks/${taskId}/run`, {
+        method: 'POST',
+        keepalive: true,
+      }).catch(() => {});
+
+      // 3. 轮询直至终态（页面不阻塞，按钮保持 loading 态）
+      const state = await pollTaskStatus(taskId);
+      if (state.status === 'completed') {
+        setSuccess('Task completed — the deliverable is in your board below.');
+      } else if (state.status === 'failed') {
+        setError(state.error || 'Generation failed. Click Retry on the task to try again.');
+      } else {
+        // timeout：run 未正常启动或超长运行
+        setError('The task is taking longer than expected. Open the board and click Retry to try again.');
+      }
+      router.refresh();
     } catch {
       setError('Network error. Try again.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-    router.refresh();
   }
 
   return (
@@ -82,18 +138,27 @@ export default function TaskForm({ projects, canUpgrade = false, quotaReached = 
       <div className="flex flex-col sm:flex-row gap-3">
         <select
           value={projectId}
-          onChange={(e) => setProjectId(Number(e.target.value))}
+          onChange={(e) => {
+            const v = Number(e.target.value);
+            if (v === -1) {
+              setShowNewProject(true);
+            } else {
+              setProjectId(v);
+              setShowNewProject(false);
+            }
+          }}
           className="input sm:w-48 shrink-0"
         >
-          {projects.length === 0 ? (
+          {localProjects.length === 0 ? (
             <option value={0}>No project</option>
           ) : (
-            projects.map((p) => (
+            localProjects.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
               </option>
             ))
           )}
+          <option value={-1}>+ New project…</option>
         </select>
         <div className="flex flex-1 gap-2">
           <input
@@ -114,6 +179,33 @@ export default function TaskForm({ projects, canUpgrade = false, quotaReached = 
           </button>
         </div>
       </div>
+
+      {/* 内联新建项目 */}
+      {showNewProject && (
+        <div className="flex gap-2 mt-3">
+          <input
+            type="text"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleCreateProject();
+              }
+            }}
+            placeholder="Project name (e.g. Blog writing)"
+            className="input flex-1"
+            autoFocus
+          />
+          <button
+            onClick={handleCreateProject}
+            disabled={creating || !newName.trim()}
+            className="btn-primary shrink-0"
+          >
+            {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create'}
+          </button>
+        </div>
+      )}
 
       {/* 配额用尽提示 */}
       {quotaReached && !loading && (
@@ -142,7 +234,7 @@ export default function TaskForm({ projects, canUpgrade = false, quotaReached = 
       {loading && (
         <p className="mt-3 text-sm text-slate-500 dark:text-slate-400 flex items-center gap-2">
           <Loader2 className="w-4 h-4 animate-spin text-brand-500" />
-          Generating with AI… this can take up to a minute.
+          Task queued — generating with AI… this can take up to a minute.
         </p>
       )}
       {error && (

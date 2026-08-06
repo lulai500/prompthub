@@ -253,7 +253,7 @@ export default function Header() {
                         </Link>
                         {user.role === 'owner' && (
                           <Link
-                            href="/dashboard/clients"
+                            href="/admin/clients"
                             className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-brand-700 dark:text-brand-300 hover:bg-slate-100 dark:hover:bg-dark-700 transition-colors"
                             onClick={() => setUserMenuOpen(false)}
                           >

@@ -1,10 +1,11 @@
 // ============================================================
 // 客户工作站 - 主页面（客户专属）
 // 首改密 → 暂停锁屏 → 工作台（统计 + 新建任务 + 看板）
-// 仅 client 角色可访问；owner 引导去 /dashboard/clients
+// 仅 client 角色可访问；owner 引导去 /admin/clients
 // ============================================================
 
 import { redirect } from 'next/navigation';
+import { Crown } from 'lucide-react';
 import { getCurrentUser, getCurrentRole } from '@/lib/supabase/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { computeTaskStats } from '@/lib/workstation';
@@ -21,7 +22,11 @@ import type { ClientProject, ClientTask } from '@/types';
 
 export const dynamic = 'force-dynamic';
 
-export default async function WorkstationPage() {
+export default async function WorkstationPage({
+  searchParams,
+}: {
+  searchParams: { checkout?: string };
+}) {
   const user = await getCurrentUser();
   const role = await getCurrentRole();
 
@@ -95,6 +100,16 @@ export default async function WorkstationPage() {
 
   return (
     <div className="container-page py-10">
+      {/* 升级成功横幅（Lemon Squeezy checkout 跳回 ?checkout=success） */}
+      {searchParams?.checkout === 'success' && (
+        <div className="card p-4 mb-4 bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800 flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-300">
+          <Crown className="w-4 h-4 shrink-0" />
+          {quotaTier === 'pro'
+            ? 'Pro is active — 500 executions/month unlocked.'
+            : 'Payment received. Pro will activate in a moment — refresh shortly.'}
+        </div>
+      )}
+
       {/* 页头 */}
       <div className="mb-8">
         <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">
@@ -121,7 +136,10 @@ export default async function WorkstationPage() {
 
       {/* 看板 */}
       <div className="mt-8">
-        <Kanban tasks={tasks as ClientTask[]} />
+        <Kanban
+          tasks={tasks as ClientTask[]}
+          projects={(projects as ClientProject[]).filter((p) => p.status !== 'archived')}
+        />
       </div>
     </div>
   );

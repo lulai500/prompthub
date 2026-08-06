@@ -284,8 +284,9 @@ export interface Client {
   id: number;
   account_id: string;
   name: string;
+  email: string | null;
   owner_id: string;
-  status: 'active' | 'paused';
+  status: 'active' | 'paused' | 'archived';
   tier: 'free' | 'pro';
   pro_expires_at: string | null;
   created_at: string;
@@ -327,6 +328,8 @@ export interface ClientTask {
   prompt_id: number | null;
   result: string | null;
   tokens: number | null;
+  /** 失败原因（服务端写友好文案，客户可见） */
+  error: string | null;
   asset_ids: unknown[];
   created_at: string;
   updated_at: string;

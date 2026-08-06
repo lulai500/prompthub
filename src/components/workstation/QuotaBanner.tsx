@@ -5,6 +5,7 @@
 
 import { Gauge, Crown } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
+import { nextMonthStartIso } from '@/lib/client-quota';
 import UpgradeButton from '@/components/workstation/UpgradeButton';
 
 interface QuotaBannerProps {
@@ -15,6 +16,7 @@ interface QuotaBannerProps {
 
 export default function QuotaBanner({ quota, canUpgrade, proExpiresAt }: QuotaBannerProps) {
   const pct = quota.limit > 0 ? Math.min(100, Math.round((quota.used / quota.limit) * 100)) : 0;
+  const resetLabel = formatDate(nextMonthStartIso());
 
   return (
     <div className="card p-5 mb-4">
@@ -49,7 +51,10 @@ export default function QuotaBanner({ quota, canUpgrade, proExpiresAt }: QuotaBa
         />
       </div>
       <p className="mt-1.5 font-mono text-xs text-slate-400 dark:text-slate-500">
-        {quota.used} / {quota.limit} used · resets monthly
+        {quota.used} / {quota.limit} used · resets {resetLabel}
+      </p>
+      <p className="mt-0.5 text-[11px] text-slate-400 dark:text-slate-500">
+        Failed attempts don&apos;t count — retries are free.
       </p>
 
       {/* 升级 / 联系站主 */}

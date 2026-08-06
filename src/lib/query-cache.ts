@@ -262,6 +262,8 @@ export const getCachedTaskAssets = unstable_cache(
       workflows: workflows.data || [],
     };
   },
+  // 注意：unstable_cache 自动把回调参数(taskSlug/tags)序列化进缓存 key，
+  // 因此不同任务天然隔离，keyParts 只需静态标识符
   ['task-assets'],
   { revalidate: 300 }
 );

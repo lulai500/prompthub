@@ -30,7 +30,7 @@ export default function CreateClientForm() {
     setError(null);
     setCopied(false);
     try {
-      const res = await fetch('/api/dashboard/clients', {
+      const res = await fetch('/api/admin/clients', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email }),

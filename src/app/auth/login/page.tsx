@@ -32,7 +32,7 @@ export default function LoginPage() {
     }
 
     setLoading(true);
-    const { error: loginError } = await supabase.auth.signInWithPassword({
+    const { data: signInData, error: loginError } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -42,8 +42,19 @@ export default function LoginPage() {
       setError('Invalid email or password. Please try again.');
       setLoading(false);
     } else {
+      // 角色跳转：owner 进管理后台，其余进个人仪表盘
+      let redirectTo = '/dashboard';
+      const userId = signInData.user?.id;
+      if (userId) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', userId)
+          .maybeSingle();
+        if (profile?.role === 'owner') redirectTo = '/admin/clients';
+      }
       router.refresh();
-      router.push('/dashboard');
+      router.push(redirectTo);
     }
   }
 

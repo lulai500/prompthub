@@ -1,5 +1,5 @@
 // ============================================================
-// PATCH /api/dashboard/clients/[id]
+// PATCH /api/admin/clients/[id]
 // 站主管理客户：status(active|paused) + 手动授/取消 Pro 额度(tier)。仅 owner。
 // ============================================================
 
@@ -30,10 +30,10 @@ export async function PATCH(
   const body = await request.json().catch(() => ({}));
   const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
 
-  // 暂停/恢复
+  // 暂停/恢复/归档
   if (body.status !== undefined) {
-    if (body.status !== 'active' && body.status !== 'paused') {
-      return NextResponse.json({ error: 'status must be active or paused.' }, { status: 400 });
+    if (!['active', 'paused', 'archived'].includes(body.status)) {
+      return NextResponse.json({ error: 'status must be active, paused or archived.' }, { status: 400 });
     }
     update.status = body.status;
   }

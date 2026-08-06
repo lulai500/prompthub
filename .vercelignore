@@ -1,0 +1,7 @@
+# Vercel 部署忽略：避免上传构建产物与本地密钥
+.next
+node_modules
+*.log
+.env
+.env.*
+!.env.example
