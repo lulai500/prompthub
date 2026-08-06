@@ -6,15 +6,20 @@
 import Link from 'next/link';
 import {
   ArrowRight,
-  Code2,
   BookOpen,
   Bot,
-  Sparkles,
-  Search,
+  CheckCircle2,
+  Code2,
+  GitBranch,
   Heart,
-  FolderOpen,
+  Layers,
+  MessageSquareText,
+  Search,
+  Sparkles,
+  Workflow,
+  Wrench,
 } from 'lucide-react';
-import { createServerSupabaseClient, getCurrentUser } from '@/lib/supabase/server';
+import { createServerSupabaseClient, getCurrentUser, getCurrentRole } from '@/lib/supabase/server';
 import { isCrawlerRequest } from '@/lib/crawler';
 import {
   getCachedCategories,
@@ -33,9 +38,25 @@ export const dynamic = 'force-dynamic'; // 禁止静态缓存，确保数据实�
 
 const GUEST_LIMIT = 10;
 
+/** 首页功能区：三支柱 + 任务工作台 */
+const FEATURES = [
+  { icon: MessageSquareText, title: 'Prompts', desc: 'Ready-to-run prompts tested by the community. Free forever.', href: '/prompts' },
+  { icon: Wrench, title: 'Skills', desc: 'Installable capability packs for Claude, Cursor, Codex and more.', href: '/skills' },
+  { icon: GitBranch, title: 'Workflows', desc: 'Multi-step processes that turn an idea into a finished result.', href: '/workflows' },
+  { icon: Sparkles, title: 'Task Workspace', desc: 'Describe a task — get an assembled kit of prompts, skills & workflows.', href: '/workspace' },
+] as const;
+
 export default async function HomePage() {
   const currentUser = await getCurrentUser();
   const isAuthenticated = !!currentUser;
+  const role = await getCurrentRole();
+  // 工作台 CTA 按角色自适应：客户进真实工作台，站主进管理后台，其余看介绍
+  const workstationCta =
+    role === 'client'
+      ? { href: '/workstation', label: 'Open your workspace' }
+      : role === 'owner'
+        ? { href: '/admin/clients', label: 'Manage client workspaces' }
+        : { href: '/workstation', label: 'Explore the Workstation' };
   // 爬虫（Googlebot / Bingbot / AI 摘要爬虫）视为"已登录"，
   // 确保首页展示真实总数与全量内容，可被搜索引擎索引
   const canViewAll = isAuthenticated || isCrawlerRequest();
@@ -99,11 +120,11 @@ export default async function HomePage() {
     for (const v of verifyData) homeVerifyMap[v.asset_id] = v.count;
   }
 
-  // 英雄区统计 — 始终显示真实数据，未登录用户看到预览提示
+  // 英雄区统计 — 用价值主张代替小数字（总数少时避免显得不可靠）
   const stats = [
-    { label: 'Prompts', value: totalPrompts, icon: Sparkles },
-    { label: 'Categories', value: categories.length, icon: FolderOpen },
-    { label: 'Free Forever', value: '100%', icon: Heart },
+    { label: 'Prompts free', value: 'Forever', icon: Sparkles },
+    { label: 'Prompts · Skills · Workflows', value: '3 pillars', icon: BookOpen },
+    { label: 'Community tested', value: 'Verified', icon: Heart },
   ];
 
   return (
@@ -166,9 +187,48 @@ export default async function HomePage() {
               <Link href="/auth/login" className="font-medium underline hover:text-amber-700 dark:hover:text-amber-300">
                 Sign in
               </Link>
-              {' '}to browse, search, and save all {totalPrompts}+ prompts
+              {' '}to browse, search, and save every prompt
             </p>
           )}
+        </div>
+      </section>
+
+      {/* ---- 功能区：三支柱 + 任务工作台 ---- */}
+      <section className="py-16">
+        <div className="container-page">
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-100 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300 text-sm font-medium mb-4">
+              <Layers className="w-4 h-4" />
+              The three pillars
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">
+              Everything you need to use AI, done well
+            </h2>
+            <p className="mt-3 text-slate-500 dark:text-slate-400 max-w-xl mx-auto">
+              Tested prompts, installable skills, and step-by-step workflows — plus a
+              workspace that assembles them for any task you describe.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {FEATURES.map((f) => (
+              <Link
+                key={f.title}
+                href={f.href}
+                className="card p-6 group hover:border-brand-300 dark:hover:border-brand-700 transition-all"
+              >
+                <div className="w-10 h-10 rounded-lg bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center mb-3">
+                  <f.icon className="w-5 h-5 text-brand-600 dark:text-brand-400" />
+                </div>
+                <h3 className="font-semibold text-slate-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
+                  {f.title}
+                </h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">
+                  {f.desc}
+                </p>
+              </Link>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -315,6 +375,74 @@ export default async function HomePage() {
           </div>
         </section>
       )}
+
+      {/* ---- 工作台区（B2B 客户工作台）---- */}
+      <section className="py-16 bg-gradient-to-br from-brand-50/60 via-slate-50 to-cyan-50/60 dark:from-brand-950/20 dark:via-dark-950 dark:to-cyan-950/10">
+        <div className="container-page">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+            {/* 左：文案 */}
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-100 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300 text-sm font-medium mb-4">
+                <Workflow className="w-4 h-4" />
+                Workstation
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">
+                A private AI workspace for every client
+              </h2>
+              <p className="mt-3 text-slate-500 dark:text-slate-400">
+                Give your clients (or yourself) a private workspace where they describe
+                a task in plain language and get an AI-generated deliverable. Projects,
+                history, usage quotas, and Pro plans — all managed from one dashboard.
+              </p>
+              <ul className="mt-5 space-y-2 text-sm text-slate-600 dark:text-slate-300">
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                  Natural language in, AI deliverable out
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                  Projects &amp; history for each client
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                  Usage quotas + Pro plans, owner dashboard
+                </li>
+              </ul>
+              <div className="mt-6 flex items-center gap-3 flex-wrap">
+                <Link href={workstationCta.href} className="btn-primary">
+                  <Workflow className="w-4 h-4" />
+                  {workstationCta.label}
+                </Link>
+                <Link href="/pricing" className="btn-secondary">
+                  View pricing
+                </Link>
+              </div>
+            </div>
+
+            {/* 右：示意卡片 */}
+            <div className="space-y-3">
+              <div className="card p-5">
+                <p className="text-[10px] uppercase tracking-wide text-slate-400 dark:text-slate-500 mb-2">
+                  Client task
+                </p>
+                <p className="text-sm text-slate-700 dark:text-slate-300">
+                  “write a 5-part blog post outline for our product launch”
+                </p>
+              </div>
+              <div className="card p-5 bg-emerald-50/40 dark:bg-emerald-950/10 border-emerald-200 dark:border-emerald-800">
+                <div className="flex items-center gap-2 mb-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                  <p className="text-xs font-medium text-emerald-700 dark:text-emerald-300">Deliverable ready</p>
+                </div>
+                <p className="text-sm text-slate-600 dark:text-slate-300 line-clamp-3">
+                  Your 5-part outline covering positioning, audience pain points, benefits,
+                  social proof, and a CTA — ready to copy or download.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* ---- CTA 区 ---- */}
       <section className="py-16 bg-slate-50 dark:bg-dark-950">
