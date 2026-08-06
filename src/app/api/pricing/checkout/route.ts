@@ -58,7 +58,7 @@ export async function POST(request: Request) {
           custom: { user_id: user.id },
         },
         product_options: {
-          redirect_url: 'https://prompthub-pi-six-gold.vercel.app/dashboard?checkout=success',
+          redirect_url: 'https://prompthub-pi-six.vercel.app/dashboard?checkout=success',
         },
       },
       relationships: {
