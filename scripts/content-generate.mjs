@@ -1,5 +1,5 @@
 // 临时脚本：用 DeepSeek 批量生成新技能/工作流（内容扩量），并写入数据库
-// 用法：DEEPSEEK_KEY=sk-... SUPABASE_PAT=sbp-... node scripts/generate-content.mjs
+// 用法：DEEPSEEK_KEY=sk-... SUPABASE_PAT=sbp-... node scripts/content-generate.mjs
 import fs from 'fs';
 
 const KEY = process.env.DEEPSEEK_KEY;

@@ -3,8 +3,8 @@
 // 与 second-pass-deepseek.mjs 的区别：为每条设计了真正的对口输入
 // （32 条创意写作类用一条贯穿的都市奇幻悬疑故事设定，8 条代码/数据类给具体代码/数据/品牌 brief）。
 // 用 node fetch（生产同款）：Windows 上 Python urllib 长请求会卡死，node fetch 实测 3.1s。
-// 断点续跑：成功 id 记入 scripts/second-pass-progress.json。
-// 用法：node scripts/second-pass-v2.mjs
+// 断点续跑：成功 id 记入 scripts/data/second-pass-progress.json。
+// 用法：node scripts/example-second-pass-v2.mjs
 import fs from 'fs';
 
 function getEnv(k) {
@@ -329,11 +329,11 @@ async function writeDb(pid, out) {
 }
 
 // ---------------- main ----------------
-const PROG = 'scripts/second-pass-progress.json';
-const OUTS = 'scripts/batch-outputs.json';
+const PROG = 'scripts/data/second-pass-progress.json';
+const OUTS = 'scripts/data/batch-outputs.json';
 const done = new Set(fs.existsSync(PROG) ? JSON.parse(fs.readFileSync(PROG, 'utf8')) : []);
 const results = fs.existsSync(OUTS) ? JSON.parse(fs.readFileSync(OUTS, 'utf8')) : {};
-const prompts = JSON.parse(fs.readFileSync('scripts/need-input-prompts.json', 'utf8')).sort((a, b) => a.id - b.id);
+const prompts = JSON.parse(fs.readFileSync('scripts/data/need-input-prompts.json', 'utf8')).sort((a, b) => a.id - b.id);
 
 let ok = 0, fail = 0;
 const failed = [];

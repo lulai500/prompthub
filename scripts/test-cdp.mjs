@@ -1,6 +1,6 @@
 // 可复用 CDP 测试脚本：headless Chrome 渲染任意 URL，可带 cookie，输出 title + body 文本 + 可选截图
 // 用法:
-//   node scripts/cdp-test.mjs --url "https://..." [--cookie "name=value"] [--screenshot out.png] [--wait 6000]
+//   node scripts/test-cdp.mjs --url "https://..." [--cookie "name=value"] [--screenshot out.png] [--wait 6000]
 // 环境要求: Node 21+ (内置 WebSocket), Chrome 在标准路径
 
 import { spawn } from 'node:child_process';

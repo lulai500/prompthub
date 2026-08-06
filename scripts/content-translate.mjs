@@ -4,8 +4,8 @@
 //
 // Usage:
 //   1. Ensure .env.local has valid Supabase credentials
-//   2. node scripts/translate-prompts.mjs --dry-run   (preview)
-//   3. node scripts/translate-prompts.mjs --force      (execute)
+//   2. node scripts/content-translate.mjs --dry-run   (preview)
+//   3. node scripts/content-translate.mjs --force      (execute)
 //
 // Features:
 //   - Detects Chinese-language prompts in the database
@@ -724,7 +724,7 @@ async function main() {
 
   if (!force) {
     console.log('\n💡 Use --force to confirm updates:');
-    console.log('   node scripts/translate-prompts.mjs --force');
+    console.log('   node scripts/content-translate.mjs --force');
     console.log('   Or use --dry-run first to preview translations');
     return;
   }

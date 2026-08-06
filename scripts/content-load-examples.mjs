@@ -1,6 +1,6 @@
 // ============================================================
 // 把 examples/outputs/*.md 写入线上 skills.example_output
-// 用法：cd prompthub && node scripts/load-skill-examples.mjs
+// 用法：cd prompthub && node scripts/content-load-examples.mjs
 // - 用 SUPABASE_SERVICE_ROLE_KEY（绕过 RLS），不触碰前端 key
 // - 更新前把旧 example_output 备份到 examples/skill-examples-backup.json
 // - 幂等：重复执行只是覆盖为同一内容

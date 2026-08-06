@@ -1,11 +1,11 @@
 // 临时脚本：用 DeepSeek 真实批量测试 561 条提示词
 // 流程：拉取提示词 → 填充变量 → DeepSeek 生成 → 输出到 batch-outputs.json（断点续跑）
-// 用法：DEEPSEEK_KEY=sk-... node scripts/batch-test-deepseek.mjs
+// 用法：DEEPSEEK_KEY=sk-... node scripts/example-batch-test.mjs
 import fs from 'fs';
 import { createClient } from '@supabase/supabase-js';
 
 const KEY = process.env.DEEPSEEK_KEY;
-const OUT_FILE = 'scripts/batch-outputs.json';
+const OUT_FILE = 'scripts/data/batch-outputs.json';
 
 // ---- 读取 .env.local 的 Supabase 配置 ----
 function getEnv(k) {

@@ -1,11 +1,11 @@
 // 临时脚本：二轮补跑"请求输入"类提示词（追加领域示例输入后重新生成）
-// 用法：DEEPSEEK_KEY=sk-... node scripts/second-pass-deepseek.mjs
+// 用法：DEEPSEEK_KEY=sk-... node scripts/example-second-pass-legacy.mjs
 import fs from 'fs';
 import { createClient } from '@supabase/supabase-js';
 
 const KEY = process.env.DEEPSEEK_KEY;
-const OUT_FILE = 'scripts/batch-outputs.json';
-const IDS_FILE = 'scripts/need-input-ids.json';
+const OUT_FILE = 'scripts/data/batch-outputs.json';
+const IDS_FILE = 'scripts/data/need-input-ids.json';
 
 function getEnv(k) {
   const env = fs.readFileSync('.env.local', 'utf8').split('\n').filter(Boolean).filter(l => !l.startsWith('#'));

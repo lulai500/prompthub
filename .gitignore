@@ -37,5 +37,8 @@ next-env.d.ts
 .env*
 
 # DeepSeek batch test data (regenerable)
-scripts/batch-outputs.json
-scripts/need-input-ids.json
+scripts/data/batch-outputs.json
+scripts/data/need-input-ids.json
+
+# runtime checkpoint (regenerable)
+scripts/data/second-pass-progress.json

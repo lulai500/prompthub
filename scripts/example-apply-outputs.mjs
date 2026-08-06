@@ -1,10 +1,10 @@
 // 临时脚本：把 DeepSeek 批量测试结果写入 example_output
-// 用法：SUPABASE_PAT=sbp_... node scripts/apply-batch-outputs.mjs
+// 用法：SUPABASE_PAT=sbp_... node scripts/example-apply-outputs.mjs
 import fs from 'fs';
 
 const PAT = process.env.SUPABASE_PAT;
 const REF = 'azwbgluryvlstsxcdvje';
-const OUT_FILE = 'scripts/batch-outputs.json';
+const OUT_FILE = 'scripts/data/batch-outputs.json';
 
 const results = JSON.parse(fs.readFileSync(OUT_FILE, 'utf8'));
 // 用美元引号 $$...$$ 包裹（内容含反斜杠/单引号时无需转义）

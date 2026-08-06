@@ -1,5 +1,5 @@
 // 真实登录 + 多页渲染测试（持久 Chrome 会话）
-// 用法: node scripts/browser-test.mjs --base https://... --email x@y --password pwd
+// 用法: node scripts/test-browser.mjs --base https://... --email x@y --password pwd
 import { spawn } from 'node:child_process';
 import { existsSync, rmSync, mkdirSync } from 'node:fs';
 

@@ -1,5 +1,5 @@
 // 交互行为测试：真实登录后，逐页执行点击/输入并断言 DOM 变化
-// 用法: node scripts/interactive-test.mjs --base ... --email ... --password ...
+// 用法: node scripts/test-interactive.mjs --base ... --email ... --password ...
 import { spawn } from 'node:child_process';
 import { existsSync, rmSync, mkdirSync } from 'node:fs';
 
