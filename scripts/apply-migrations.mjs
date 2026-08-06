@@ -10,6 +10,7 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
 const MIGRATIONS = [
+  'migration-feedback.sql',
   'migration-client-tasks-error.sql',
   'migration-client-projects-self-create.sql',
   'migration-clients-email.sql',

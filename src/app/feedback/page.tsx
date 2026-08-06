@@ -15,7 +15,6 @@ import {
   CheckCircle2,
   ArrowLeft,
 } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
 
 const FEEDBACK_TYPES = [
   { value: 'suggestion', label: 'Suggestion', icon: Lightbulb, desc: 'Ideas to improve the platform' },
@@ -25,8 +24,6 @@ const FEEDBACK_TYPES = [
 ] as const;
 
 export default function FeedbackPage() {
-  const supabase = createClient();
-
   const [type, setType] = useState<string>('suggestion');
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
@@ -50,22 +47,26 @@ export default function FeedbackPage() {
 
     setSubmitting(true);
 
-    // 获取当前用户（可选）
-    const { data: sessionData } = await supabase.auth.getSession();
-    const userId = sessionData.session?.user?.id || null;
-
-    const { error: insertError } = await supabase
-      .from('feedback')
-      .insert({
-        user_id: userId,
-        type,
-        title: title.trim(),
-        message: message.trim(),
-        email: email.trim() || null,
+    // 提交到服务端 API：写库 + 邮件通知站主
+    try {
+      const res = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type,
+          title: title.trim(),
+          message: message.trim(),
+          email: email.trim() || null,
+        }),
       });
-
-    if (insertError) {
-      setError(insertError.message);
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || 'Failed to submit feedback.');
+        setSubmitting(false);
+        return;
+      }
+    } catch {
+      setError('Network error. Try again.');
       setSubmitting(false);
       return;
     }
