@@ -25,7 +25,7 @@
 
 1. 在 Supabase Dashboard 左侧菜单 → **SQL Editor**
 2. 点击 **"New query"**
-3. 将 `supabase/schema.sql` 文件内容**完整粘贴**到编辑器中
+3. 将 `supabase/migrations/schema.sql` 文件内容**完整粘贴**到编辑器中
 4. 点击 **"Run"** 执行
 5. 看到 "Success. No rows returned" 即成功
 

@@ -44,14 +44,14 @@ Every asset is free, every asset is meant to be **tested**: we publish the model
 
 1. Open your Supabase project → **SQL Editor**
 2. Run the migrations in order:
-   - `supabase/schema.sql` — core tables (profiles, prompts, favorites, ratings…)
-   - `supabase/migration-skills-workflows.sql` — skills & workflows pillars
-   - `supabase/migration-newsletter.sql` — newsletter subscribers
+   - `supabase/migrations/schema.sql` — core tables (profiles, prompts, favorites, ratings…)
+   - `supabase/migrations/migration-skills-workflows.sql` — skills & workflows pillars
+   - `supabase/migrations/migration-newsletter.sql` — newsletter subscribers
 3. (Optional) Load seed content:
-   - `supabase/seed-skills-workflows.sql` — 24 skills + 4 workflows
-   - `supabase/seed-import-video-skills.sql` — 16 video production skills
-   - `supabase/seed-import-tool-skills.sql` — 15 tool-server skills
-   - `supabase/seed-import-codeflow.sql` — CodeFlow workflow
+   - `supabase/seeds/seed-skills-workflows.sql` — 24 skills + 4 workflows
+   - `supabase/seeds/seed-import-video-skills.sql` — 16 video production skills
+   - `supabase/seeds/seed-import-tool-skills.sql` — 15 tool-server skills
+   - `supabase/seeds/seed-import-codeflow.sql` — CodeFlow workflow
 
 ### 3. Configure environment
 

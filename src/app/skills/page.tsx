@@ -1,7 +1,7 @@
 // ============================================================
 // Skills 板块列表页（骨架）
 // 展示可安装的技能包：Claude Skill / Cursor Rules / Codex…
-// 若未执行 migration-skills-workflows.sql（表不存在），
+// 若未执行 supabase/migrations/migration-skills-workflows.sql（表不存在），
 // 查询自动返回空 → 显示空态，不报错
 // ============================================================
 
