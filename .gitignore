@@ -42,3 +42,5 @@ scripts/data/need-input-ids.json
 
 # runtime checkpoint (regenerable)
 scripts/data/second-pass-progress.json
+
+.vercel

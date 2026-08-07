@@ -5,7 +5,8 @@
 // ============================================================
 
 import { redirect } from 'next/navigation';
-import { Crown } from 'lucide-react';
+import Link from 'next/link';
+import { Crown, HelpCircle } from 'lucide-react';
 import { getCurrentUser, getCurrentRole } from '@/lib/supabase/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { computeTaskStats } from '@/lib/workstation';
@@ -111,13 +112,22 @@ export default async function WorkstationPage({
       )}
 
       {/* 页头 */}
-      <div className="mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">
-          {myClient?.name ? `${myClient.name} — ` : ''}Workstation
-        </h1>
-        <p className="text-slate-500 dark:text-slate-400 mt-1">
-          Describe a task, run it with AI, and collect the deliverable below.
-        </p>
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">
+            {myClient?.name ? `${myClient.name} — ` : ''}Workstation
+          </h1>
+          <p className="text-slate-500 dark:text-slate-400 mt-1">
+            Describe a task, run it with AI, and collect the deliverable below.
+          </p>
+        </div>
+        <Link
+          href="/workstation/tutorial"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 hover:underline shrink-0"
+        >
+          <HelpCircle className="w-4 h-4" />
+          New here? Tutorial
+        </Link>
       </div>
 
       {/* 用量配额 */}
