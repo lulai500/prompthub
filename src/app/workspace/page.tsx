@@ -5,9 +5,11 @@
 // 三支柱终极入口（Pro 卖点）
 // ============================================================
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Search, Loader2, Sparkles, MessageSquareText, Wrench, GitBranch, Lightbulb } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
 
 interface PromptLike { id: number; title: string; slug: string | null; description: string | null; category?: { name?: string } | null }
 interface SkillLike { id: number; title: string; slug: string | null; skill_format: string }
@@ -24,10 +26,24 @@ interface WorkspaceResult {
 const SUGGESTIONS = ['write a blog post', 'debug my code', 'analyze data', 'write a novel', 'create a video'];
 
 export default function WorkspacePage() {
+  const router = useRouter();
+  const supabase = createClient();
+  const [authChecked, setAuthChecked] = useState(false);
   const [q, setQ] = useState('');
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [result, setResult] = useState<WorkspaceResult | null>(null);
+
+  // 登录墙：未登录访客跳转登录页，避免工作台内容对游客开放
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session?.user) {
+        router.push('/auth/login');
+        return;
+      }
+      setAuthChecked(true);
+    });
+  }, [supabase, router]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -42,6 +58,18 @@ export default function WorkspacePage() {
       setResult({ task: null, prompts: [], skills: [], workflows: [], note: 'Something went wrong. Try again.' });
     }
     setLoading(false);
+  }
+
+  // 鉴权完成前显示骨架屏，避免内容闪现
+  if (!authChecked) {
+    return (
+      <div className="container-page py-10">
+        <div className="max-w-3xl mx-auto animate-pulse space-y-4">
+          <div className="h-8 w-48 bg-slate-200 dark:bg-dark-700 rounded" />
+          <div className="h-12 bg-slate-200 dark:bg-dark-700 rounded-xl" />
+        </div>
+      </div>
+    );
   }
 
   return (
