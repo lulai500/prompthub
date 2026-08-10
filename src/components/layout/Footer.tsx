@@ -88,8 +88,8 @@ export default function Footer() {
 
           {/* 版权 */}
           <p className="text-xs text-slate-400 dark:text-slate-500">
-            &copy; {new Date().getFullYear()} PromptHub. Open source. Prompts free —
-            skills &amp; workflows for members.
+            &copy; {new Date().getFullYear()} PromptHub. Open source. Everything free —
+            prompts, skills &amp; workflows.
           </p>
         </div>
       </div>

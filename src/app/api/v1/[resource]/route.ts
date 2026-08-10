@@ -3,6 +3,7 @@
 // resource ∈ prompts | skills | workflows
 // 参数：category / tag / search / limit(≤100) / offset
 // 限流：30 次/分钟/IP
+// 全站免费：所有资源返回完整内容
 // ============================================================
 
 import { NextResponse } from 'next/server';

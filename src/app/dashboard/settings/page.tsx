@@ -6,10 +6,9 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { User, Save, ArrowLeft, Shield, Crown, Clock } from 'lucide-react';
+import { Save, ArrowLeft, Shield } from 'lucide-react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
-import { getMembershipLabel } from '@/lib/utils';
 import type { Profile } from '@/types';
 
 export default function SettingsPage() {
@@ -117,46 +116,6 @@ export default function SettingsPage() {
         <h1 className="page-title text-slate-900 dark:text-white mb-6">
           Account Settings
         </h1>
-
-        {/* 会员状态卡片 */}
-        <div className="card p-5 mb-6">
-          <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-              profile?.membership_tier === 'free'
-                ? 'bg-slate-100 dark:bg-dark-700'
-                : 'bg-yellow-100 dark:bg-yellow-900/20'
-            }`}>
-              {profile?.membership_tier === 'free' ? (
-                <User className="w-5 h-5 text-slate-500" />
-              ) : (
-                <Crown className="w-5 h-5 text-yellow-500" />
-              )}
-            </div>
-            <div>
-              <p className="font-semibold text-slate-900 dark:text-white">
-                {getMembershipLabel(profile?.membership_tier || 'free')}
-              </p>
-              {profile?.membership_tier === 'free' ? (
-                <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
-                  Free plan - Unlimited favorites included
-                </p>
-              ) : (
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  {profile?.membership_expires_at
-                    ? `Expires: ${new Date(profile.membership_expires_at).toLocaleDateString()}`
-                    : 'Active subscription'}
-                </p>
-              )}
-            </div>
-            {profile?.membership_tier === 'free' && (
-              <Link href="/pricing" className="btn-secondary text-xs ml-auto">
-                <Crown className="w-3.5 h-3.5" />
-                Upgrade
-              </Link>
-            )}
-          </div>
-        </div>
 
         {/* 编辑表单 */}
         <form onSubmit={handleSave} className="card p-6 space-y-5">

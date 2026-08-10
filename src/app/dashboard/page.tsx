@@ -9,16 +9,15 @@ import {
   Heart,
   FolderOpen,
   Settings,
-  Crown,
-  Clock,
   ArrowRight,
   Flame,
   CheckCircle2,
   BarChart3,
   Bookmark,
+  Clock,
 } from 'lucide-react';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { formatDate, getMembershipLabel } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
 import { computeStreakStats } from '@/lib/streaks';
 import CollectionsPanel from '@/components/collections/CollectionsPanel';
 
@@ -123,24 +122,11 @@ export default async function DashboardPage() {
             </p>
           </div>
 
-          {/* 会员状态 */}
-          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${
-            profile?.membership_tier === 'free'
-              ? 'bg-slate-100 dark:bg-dark-700 text-slate-600 dark:text-slate-400'
-              : 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400'
-          }`}>
-            {profile?.membership_tier === 'free' ? (
-              <Clock className="w-4 h-4" />
-            ) : (
-              <Crown className="w-4 h-4" />
-            )}
-            {getMembershipLabel(profile?.membership_tier || 'free')}
-          </div>
         </div>
       </div>
 
       {/* 统计卡片 */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
         <Link href="/dashboard/favorites" className="card p-5 group hover:border-brand-300 dark:hover:border-brand-700 transition-all">
           <Heart className="w-8 h-8 text-red-500 mb-3" />
           <p className="text-2xl font-bold text-slate-900 dark:text-white">
@@ -158,16 +144,6 @@ export default async function DashboardPage() {
           </p>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
             Folders
-          </p>
-        </Link>
-
-        <Link href="/pricing" className="card p-5 group hover:border-brand-300 dark:hover:border-brand-700 transition-all">
-          <Crown className="w-8 h-8 text-yellow-500 mb-3" />
-          <p className="text-2xl font-bold text-slate-900 dark:text-white">
-            {profile?.membership_tier === 'free' ? 'Free' : 'Pro'}
-          </p>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Current Plan
           </p>
         </Link>
       </div>

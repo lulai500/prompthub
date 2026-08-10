@@ -93,7 +93,7 @@ export default function FirstVisitOnboarding({ show }: { show: boolean }) {
               Install skills &amp; workflows
               <br />
               <span className="text-xs text-slate-500 dark:text-slate-400">
-                Members unlock full skill content
+                Every skill and workflow is free
               </span>
             </span>
           </Link>

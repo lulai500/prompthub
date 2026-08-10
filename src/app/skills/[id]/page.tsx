@@ -7,18 +7,17 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { ArrowLeft, Wrench, Eye, Boxes } from 'lucide-react';
-import { createAdminClient, getCurrentMembershipTier } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import { getCachedVersionInfo, getCachedVerifyCount } from '@/lib/query-cache';
 import RelatedPillars, { type RelatedPillarItem } from '@/components/prompts/RelatedPillars';
 import SkillFormatExport from '@/components/skills/SkillFormatExport';
 import ForkButton from '@/components/prompts/ForkButton';
 import AddToCollectionButton from '@/components/collections/AddToCollectionButton';
 import VerifyButton from '@/components/prompts/VerifyButton';
-import MembershipGate from '@/components/membership/MembershipGate';
 import type { Skill } from '@/types';
 
-// 会员门控：内容随登录态变化，无法整页 ISR
-export const dynamic = 'force-dynamic';
+// 全站免费：内容不随登录态变化，可 ISR 缓存（5 分钟）
+export const revalidate = 300;
 
 interface Props {
   params: { id: string };
@@ -93,11 +92,6 @@ export default async function SkillDetailPage({ params }: Props) {
   const versionInfo = await getCachedVersionInfo('skill', skill.id);
   // "我测试过"验证数
   const verifyCount = await getCachedVerifyCount('skill', skill.id);
-
-  // 会员门控：仅非 free 会员可见完整内容（当前无会员 → 全员预览）
-  const isMember = (await getCurrentMembershipTier()) !== 'free';
-  // 部分免费预览：正文前 200 字符（不含 frontmatter）
-  const skillPreview = skill.content.replace(/^---\n[\s\S]*?\n---\n?/, '').slice(0, 200);
 
   // ---- 跨板块"搭配使用"推荐（按共享标签匹配）----
   let relatedItems: RelatedPillarItem[] = [];
@@ -191,9 +185,8 @@ export default async function SkillDetailPage({ params }: Props) {
             </div>
           </div>
 
-          {/* 技能正文（会员可见；非会员显示部分预览） */}
-          {!isMember && <MembershipGate label="skill" preview={skillPreview} />}
-          {isMember && skill.content && (
+          {/* 技能正文（全站免费） */}
+          {skill.content && (
             <div className="card p-6">
               <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
                 Skill Content
@@ -206,8 +199,8 @@ export default async function SkillDetailPage({ params }: Props) {
             </div>
           )}
 
-          {/* 示例输出（会员可见） */}
-          {isMember && skill.example_output && (
+          {/* 示例输出 */}
+          {skill.example_output && (
             <div className="card p-6">
               <div className="flex items-center gap-2 mb-3">
                 <Eye className="w-5 h-5 text-green-500" />
@@ -235,20 +228,18 @@ export default async function SkillDetailPage({ params }: Props) {
             )}
             <AddToCollectionButton assetType="skill" assetId={skill.id} />
             <VerifyButton assetId={skill.id} assetType="skill" initialCount={verifyCount} />
-            {isMember && (
-              <ForkButton
-                data={{
-                  type: 'skill',
-                  title: skill.title,
-                  description: skill.description || '',
-                  content: skill.content,
-                  skill_format: skill.skill_format,
-                  compatible_models: skill.compatible_models.join(', '),
-                  install_instructions: skill.install_instructions || '',
-                  example_output: skill.example_output || '',
-                }}
-              />
-            )}
+            <ForkButton
+              data={{
+                type: 'skill',
+                title: skill.title,
+                description: skill.description || '',
+                content: skill.content,
+                skill_format: skill.skill_format,
+                compatible_models: skill.compatible_models.join(', '),
+                install_instructions: skill.install_instructions || '',
+                example_output: skill.example_output || '',
+              }}
+            />
             <h3 className="font-semibold text-slate-900 dark:text-white mb-4">Details</h3>
             {skill.compatible_models.length > 0 && (
               <div className="mb-4">
@@ -283,8 +274,8 @@ export default async function SkillDetailPage({ params }: Props) {
         </div>
       </div>
 
-      {/* 安装步骤（会员可见） */}
-      {isMember && skill.install_instructions && (
+      {/* 安装步骤 */}
+      {skill.install_instructions && (
         <div className="card p-6 mt-6">
           <div className="flex items-center gap-2 mb-3">
             <Boxes className="w-5 h-5 text-yellow-500" />
@@ -298,8 +289,8 @@ export default async function SkillDetailPage({ params }: Props) {
         </div>
       )}
 
-      {/* 多格式导出（会员可见） */}
-      {isMember && <SkillFormatExport skill={skill} />}
+      {/* 多格式导出 */}
+      <SkillFormatExport skill={skill} />
 
       {/* 跨板块"搭配使用"推荐 */}
       <RelatedPillars items={relatedItems} />

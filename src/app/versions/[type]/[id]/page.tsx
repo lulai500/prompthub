@@ -6,9 +6,8 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { History, ArrowLeft } from 'lucide-react';
-import { createAdminClient, getCurrentMembershipTier } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import { getCachedVersions, getCachedPromptDetail } from '@/lib/query-cache';
-import MembershipGate from '@/components/membership/MembershipGate';
 import { formatDate } from '@/lib/utils';
 
 export const revalidate = 300;
@@ -46,10 +45,6 @@ export default async function VersionsPage({ params }: Props) {
   const title = await fetchAssetTitle(type, assetId);
   const total = versions.length;
 
-  // 会员门控：skill/workflow 的完整版本快照仅会员可见（防止付费墙被版本页绕过）
-  const isMember = type === 'prompt' ? true : (await getCurrentMembershipTier()) !== 'free';
-  const previewText = versions[0]?.content?.slice(0, 200) || '';
-
   return (
     <div className="container-page py-10 max-w-3xl">
       <Link
@@ -71,36 +66,32 @@ export default async function VersionsPage({ params }: Props) {
         </p>
       </div>
 
-      {isMember ? (
-        <div className="space-y-3">
-          {versions.map((v, i) => {
-            const versionNumber = total - i;
-            const isLatest = i === 0;
-            return (
-              <details key={v.id} className="card p-4" open={isLatest}>
-                <summary className="cursor-pointer font-medium text-slate-900 dark:text-white flex items-center justify-between">
-                  <span>
-                    v{versionNumber}
-                    {isLatest && (
-                      <span className="ml-2 text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full">
-                        latest
-                      </span>
-                    )}
-                  </span>
-                  <span className="text-xs text-slate-400 font-normal">
-                    {formatDate(v.created_at)}
-                  </span>
-                </summary>
-                <pre className="mt-3 p-4 rounded-xl bg-slate-100 dark:bg-dark-800 text-xs text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed max-h-80 overflow-y-auto">
-                  {v.content}
-                </pre>
-              </details>
-            );
-          })}
-        </div>
-      ) : (
-        <MembershipGate label={type} preview={previewText} />
-      )}
+      <div className="space-y-3">
+        {versions.map((v, i) => {
+          const versionNumber = total - i;
+          const isLatest = i === 0;
+          return (
+            <details key={v.id} className="card p-4" open={isLatest}>
+              <summary className="cursor-pointer font-medium text-slate-900 dark:text-white flex items-center justify-between">
+                <span>
+                  v{versionNumber}
+                  {isLatest && (
+                    <span className="ml-2 text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full">
+                      latest
+                    </span>
+                  )}
+                </span>
+                <span className="text-xs text-slate-400 font-normal">
+                  {formatDate(v.created_at)}
+                </span>
+              </summary>
+              <pre className="mt-3 p-4 rounded-xl bg-slate-100 dark:bg-dark-800 text-xs text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed max-h-80 overflow-y-auto">
+                {v.content}
+              </pre>
+            </details>
+          );
+        })}
+      </div>
     </div>
   );
 }

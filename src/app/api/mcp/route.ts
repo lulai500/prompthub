@@ -3,7 +3,7 @@
 // 让 Claude Code / Claude Desktop 等 AI 助手直接查询 PromptHub 资产
 // 协议：MCP (Model Context Protocol)，轻量 JSON-RPC 2.0
 // 工具：search/get × prompts/skills/workflows
-// 注意：技能/工作流仅返回元数据（保护会员付费墙）
+// 全站免费：技能/工作流通过 get_skill/get_workflow 返回完整内容
 // ============================================================
 
 import { NextResponse } from 'next/server';
@@ -38,7 +38,7 @@ const TOOLS = [
   {
     name: 'search_skills',
     description:
-      'Search PromptHub skills by query or category. Returns metadata only (full skill content requires membership).',
+      'Search PromptHub skills by query or category. Returns metadata; call get_skill for full content.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -50,7 +50,7 @@ const TOOLS = [
   },
   {
     name: 'get_skill',
-    description: 'Get a skill by slug or id (metadata only; full content requires membership).',
+    description: 'Get a skill by slug or id, including full content.',
     inputSchema: {
       type: 'object',
       properties: { id: { type: 'string' } },
@@ -59,7 +59,7 @@ const TOOLS = [
   },
   {
     name: 'search_workflows',
-    description: 'Search PromptHub workflows by query or category. Returns metadata only.',
+    description: 'Search PromptHub workflows by query or category. Returns metadata; call get_workflow for full content.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -71,7 +71,7 @@ const TOOLS = [
   },
   {
     name: 'get_workflow',
-    description: 'Get a workflow by slug or id (metadata + step overview only).',
+    description: 'Get a workflow by slug or id, including steps and configuration.',
     inputSchema: {
       type: 'object',
       properties: { id: { type: 'string' } },
@@ -157,7 +157,7 @@ async function callTool(name: string, args: Record<string, any>) {
         const { data } = await byIdOrSlug(
           'skills',
           String(args.id),
-          'id, title, slug, description, skill_format, compatible_models, tags, category:skill_categories(name)'
+          'id, title, slug, description, content, skill_format, compatible_models, install_instructions, example_output, tags, category:skill_categories(name)'
         ).single();
         if (!data) return err('Skill not found');
         return text(JSON.stringify(data, null, 2));
@@ -179,7 +179,7 @@ async function callTool(name: string, args: Record<string, any>) {
         const { data } = await byIdOrSlug(
           'workflows',
           String(args.id),
-          'id, title, slug, description, workflow_type, tools_required, tags, category:workflow_categories(name)'
+          'id, title, slug, description, workflow_type, tools_required, steps, config_content, expected_output, tips, tags, category:workflow_categories(name)'
         ).single();
         if (!data) return err('Workflow not found');
         return text(JSON.stringify(data, null, 2));

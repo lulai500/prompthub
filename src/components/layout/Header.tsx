@@ -227,11 +227,6 @@ export default function Header() {
                         <p className="text-sm font-medium text-slate-900 dark:text-white">
                           {user.username || 'User'}
                         </p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                          {user.membership_tier === 'free'
-                            ? 'Free Plan'
-                            : 'Pro Member'}
-                        </p>
                       </div>
                       <div className="p-1.5">
                         <Link

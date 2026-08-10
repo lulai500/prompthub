@@ -7,17 +7,16 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { ArrowLeft, Workflow as WorkflowIcon, ListOrdered, Eye, Lightbulb } from 'lucide-react';
-import { createAdminClient, getCurrentMembershipTier } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import { getCachedVersionInfo, getCachedVerifyCount } from '@/lib/query-cache';
 import RelatedPillars, { type RelatedPillarItem } from '@/components/prompts/RelatedPillars';
 import ForkButton from '@/components/prompts/ForkButton';
 import AddToCollectionButton from '@/components/collections/AddToCollectionButton';
 import VerifyButton from '@/components/prompts/VerifyButton';
-import MembershipGate from '@/components/membership/MembershipGate';
 import type { Workflow, WorkflowStep } from '@/types';
 
-// 会员门控：内容随登录态变化，无法整页 ISR
-export const dynamic = 'force-dynamic';
+// 全站免费：内容不随登录态变化，可 ISR 缓存（5 分钟）
+export const revalidate = 300;
 
 interface Props {
   params: { id: string };
@@ -95,14 +94,6 @@ export default async function WorkflowDetailPage({ params }: Props) {
 
   // steps 来自 JSONB，兜底确保为数组
   const steps: WorkflowStep[] = Array.isArray(workflow.steps) ? workflow.steps : [];
-
-  // 会员门控：仅非 free 会员可见完整内容（当前无会员 → 全员预览）
-  const isMember = (await getCurrentMembershipTier()) !== 'free';
-  // 部分免费预览：前 2 步概述，或描述前 200 字符
-  const workflowPreview =
-    steps.length > 0
-      ? steps.slice(0, 2).map((s) => `${s.step}. ${s.title} — ${s.tool}`).join('\n') + '\n…'
-      : (workflow.description || '').slice(0, 200);
 
   // ---- 跨板块"搭配使用"推荐（按共享标签匹配）----
   let relatedItems: RelatedPillarItem[] = [];
@@ -198,9 +189,7 @@ export default async function WorkflowDetailPage({ params }: Props) {
             </div>
           </div>
 
-          {/* 步骤可视化（会员可见；非会员显示部分预览） */}
-          {!isMember && <MembershipGate label="workflow" preview={workflowPreview} />}
-          {isMember && (
+          {/* 步骤可视化（全站免费） */}
           <div className="card p-6">
             <div className="flex items-center gap-2 mb-4">
               <ListOrdered className="w-5 h-5 text-brand-500" />
@@ -232,10 +221,9 @@ export default async function WorkflowDetailPage({ params }: Props) {
               </ol>
             )}
           </div>
-          )}
 
-          {/* 配置内容（会员可见） */}
-          {isMember && workflow.config_content && (
+          {/* 配置内容 */}
+          {workflow.config_content && (
             <div className="card p-6">
               <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
                 Configuration
@@ -248,8 +236,8 @@ export default async function WorkflowDetailPage({ params }: Props) {
             </div>
           )}
 
-          {/* 预期输出（会员可见） */}
-          {isMember && workflow.expected_output && (
+          {/* 预期输出 */}
+          {workflow.expected_output && (
             <div className="card p-6">
               <div className="flex items-center gap-2 mb-3">
                 <Eye className="w-5 h-5 text-green-500" />
@@ -277,22 +265,20 @@ export default async function WorkflowDetailPage({ params }: Props) {
             )}
             <AddToCollectionButton assetType="workflow" assetId={workflow.id} />
             <VerifyButton assetId={workflow.id} assetType="workflow" initialCount={verifyCount} />
-            {isMember && (
-              <ForkButton
-                data={{
-                  type: 'workflow',
-                  title: workflow.title,
-                  description: workflow.description || '',
-                  content: workflow.description || '',
-                  workflow_type: workflow.workflow_type,
-                  tools_required: workflow.tools_required.join(', '),
-                  steps: JSON.stringify(steps),
-                  config_content: workflow.config_content || '',
-                  expected_output: workflow.expected_output || '',
-                  tips: workflow.tips || '',
-                }}
-              />
-            )}
+            <ForkButton
+              data={{
+                type: 'workflow',
+                title: workflow.title,
+                description: workflow.description || '',
+                content: workflow.description || '',
+                workflow_type: workflow.workflow_type,
+                tools_required: workflow.tools_required.join(', '),
+                steps: JSON.stringify(steps),
+                config_content: workflow.config_content || '',
+                expected_output: workflow.expected_output || '',
+                tips: workflow.tips || '',
+              }}
+            />
             <h3 className="font-semibold text-slate-900 dark:text-white mb-4">Details</h3>
             {workflow.tools_required.length > 0 && (
               <div className="mb-4">
@@ -325,8 +311,8 @@ export default async function WorkflowDetailPage({ params }: Props) {
             </p>
           </div>
 
-          {/* 调参建议（会员可见） */}
-          {isMember && workflow.tips && (
+          {/* 调参建议 */}
+          {workflow.tips && (
             <div className="card p-5">
               <div className="flex items-center gap-2 mb-2">
                 <Lightbulb className="w-4 h-4 text-yellow-500" />

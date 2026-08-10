@@ -14,10 +14,10 @@ export const metadata: Metadata = {
 const ENDPOINTS = [
   { method: 'GET', path: '/api/v1/prompts', desc: 'List prompts' },
   { method: 'GET', path: '/api/v1/prompts/:id', desc: 'Single prompt (id or slug)' },
-  { method: 'GET', path: '/api/v1/skills', desc: 'List skills (metadata only)' },
-  { method: 'GET', path: '/api/v1/skills/:id', desc: 'Single skill (metadata only)' },
-  { method: 'GET', path: '/api/v1/workflows', desc: 'List workflows (metadata only)' },
-  { method: 'GET', path: '/api/v1/workflows/:id', desc: 'Single workflow (metadata only)' },
+  { method: 'GET', path: '/api/v1/skills', desc: 'List skills (full content)' },
+  { method: 'GET', path: '/api/v1/skills/:id', desc: 'Single skill (full content)' },
+  { method: 'GET', path: '/api/v1/workflows', desc: 'List workflows (full content)' },
+  { method: 'GET', path: '/api/v1/workflows/:id', desc: 'Single workflow (full content)' },
 ];
 
 const PARAMS = [
@@ -82,7 +82,7 @@ GET ${base}/api/v1/prompts?tag=python&limit=5
 // Single prompt by slug
 GET ${base}/api/v1/prompts/javascript
 
-// List skills (metadata only — full content requires membership)
+// List skills (full content — everything is free)
 GET ${base}/api/v1/skills?category=coding`}
         </pre>
       </div>
@@ -102,8 +102,7 @@ GET ${base}/api/v1/skills?category=coding`}
           <div>
             <h2 className="text-lg font-semibold mb-2">Notes</h2>
             <ul className="text-sm text-slate-500 dark:text-slate-400 space-y-1.5 list-disc ml-4">
-              <li>Prompts return full content — they are free.</li>
-              <li>Skills &amp; workflows return metadata only (title, description, format, tags). Full content requires membership.</li>
+              <li>Every asset returns full content — prompts, skills &amp; workflows are all free.</li>
               <li>Rate limit: 30 requests/minute/IP.</li>
               <li>No API key required for read access.</li>
             </ul>

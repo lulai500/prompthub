@@ -78,10 +78,10 @@ export default function McpDocsPage() {
           {[
             ['search_prompts', 'Search prompts by query/category/tag (metadata)'],
             ['get_prompt', 'Get the full content of a prompt (free)'],
-            ['search_skills', 'Search skills by query/category (metadata only)'],
-            ['get_skill', 'Get a skill by slug/id (metadata only)'],
-            ['search_workflows', 'Search workflows by query/category (metadata only)'],
-            ['get_workflow', 'Get a workflow by slug/id (metadata + overview)'],
+            ['search_skills', 'Search skills by query/category (metadata)'],
+            ['get_skill', 'Get a skill by slug/id (full content)'],
+            ['search_workflows', 'Search workflows by query/category (metadata)'],
+            ['get_workflow', 'Get a workflow by slug/id (full content)'],
           ].map(([name, desc]) => (
             <div key={name} className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 dark:bg-dark-800">
               <code className="text-sm text-brand-600 dark:text-brand-400 w-36 shrink-0">{name}</code>
@@ -90,8 +90,7 @@ export default function McpDocsPage() {
           ))}
         </div>
         <p className="text-xs text-slate-400 dark:text-slate-500 mt-3">
-          Prompts return full content (free). Skills &amp; workflows return metadata only —
-          full content requires membership, even through the API.
+          Every asset returns full content — prompts, skills, and workflows are all free.
         </p>
       </div>
 

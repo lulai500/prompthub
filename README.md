@@ -22,7 +22,7 @@ Every asset is free, every asset is meant to be **tested**: we publish the model
 - 🌗 **Dark / light mode** — responsive on desktop and mobile
 - 🔒 **Secure by default** — RLS policies, rate limiting, CSP, input validation
 - 📧 **Newsletter capture** — grow an owned audience (optional Buttondown sync)
-- 💳 **Monetization-ready** — Lemon Squeezy subscription code is dormant, not dead
+- 💳 **All content free** — prompts, skills & workflows, forever. Only Workstation AI execution is metered (free 20 runs / Pro 500 runs per month)
 
 ## 🏗️ Tech Stack
 

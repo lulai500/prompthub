@@ -4,7 +4,7 @@
 // ============================================================
 
 import Link from 'next/link';
-import { Lock, BadgeCheck } from 'lucide-react';
+import { BadgeCheck } from 'lucide-react';
 import type { Skill } from '@/types';
 
 interface SkillCardProps {
@@ -21,9 +21,6 @@ export default function SkillCard({ skill, verifyCount }: SkillCardProps) {
     >
       <div className="flex items-center justify-between mb-3">
         <span className="badge-primary">{skill.skill_format}</span>
-        <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded-full">
-          <Lock className="w-3 h-3" /> Members
-        </span>
       </div>
       <h3 className="font-semibold text-slate-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
         {skill.title}

@@ -137,8 +137,9 @@ export default async function AboutPage() {
             boundaries of what AI can do.
           </p>
           <p className="text-slate-600 dark:text-slate-400 leading-relaxed mb-6">
-            We are committed to keeping the core platform free forever. Premium
-            features will be additive — not gatekeeping existing functionality.
+            We are committed to keeping every part of PromptHub free — no
+            paywalls, no gatekeeping. The only exception is Workstation AI
+            execution, which is metered because each run calls a real LLM.
             Every prompt on this platform is contributed by and for the
             community.
           </p>
