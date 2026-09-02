@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
       })
       .select()
       .single();
-    if (error) return err('注册失败', 'db_error', 500);
+    if (error) return err('注册失败: ' + (error.message || JSON.stringify(error)), 'db_error', 500);
     return ok({ token: signToken(data.id), user: userOut(data) });
   }
 
