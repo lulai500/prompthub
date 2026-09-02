@@ -1,484 +1,167 @@
 // ============================================================
-// 首页（Home Page）
-// SSR 渲染，从 Supabase 获取热门提示词和分类数据
+// 小精霊（Little Spirit）- 落地页（静态，无后端依赖）
+// 复用现有 UI 框架：container-page / card / btn-primary / btn-secondary / brand 渐变
 // ============================================================
 
 import Link from 'next/link';
 import {
   ArrowRight,
-  BookOpen,
-  Bot,
-  CheckCircle2,
-  Code2,
-  GitBranch,
+  MessageCircle,
+  Mic,
+  Brain,
   Heart,
-  Layers,
-  MessageSquareText,
-  Search,
+  Volume2,
+  Download,
+  ShieldCheck,
   Sparkles,
-  Workflow,
-  Wrench,
+  Moon,
 } from 'lucide-react';
-import { createServerSupabaseClient, getCurrentUser, getCurrentRole } from '@/lib/supabase/server';
-import { isCrawlerRequest } from '@/lib/crawler';
-import {
-  getCachedCategories,
-  getCachedPromptCount,
-  getCachedPopularPrompts,
-  getCachedPopularFillers,
-  getCachedDailyPick,
-  getCachedVerifyCountsBatch,
-} from '@/lib/query-cache';
-import { getRecommendationsForUser, assetHref } from '@/lib/recommendations';
-import PromptCard from '@/components/prompts/PromptCard';
-import FirstVisitOnboarding from '@/components/onboarding/FirstVisitOnboarding';
-import type { Category, Prompt } from '@/types';
+import type { LucideIcon } from 'lucide-react';
 
-export const dynamic = 'force-dynamic'; // 禁止静态缓存，确保数据实时
+const PRIVACY_URL = 'https://prompthub-pi-six.vercel.app/privacy';
 
-const GUEST_LIMIT = 10;
+// 功能点
+const FEATURES: Array<{ icon: LucideIcon; title: string; desc: string }> = [
+  { icon: MessageCircle, title: '会話', desc: 'AIと自然にチャット。あなたのことを少しずつ知っていく。' },
+  { icon: Brain, title: '記憶', desc: 'あなたの言葉や好みを覚えて、会話に活かす。' },
+  { icon: Mic, title: 'AI通話', desc: 'まるで電話のように、ハンズフリーで話せる。' },
+  { icon: Volume2, title: '声', desc: '返事を音声で読み上げ、いつもそばにいる感覚に。' },
+  { icon: Heart, title: '好感度・絆', desc: 'やり取りを重ねるほど、関係が深まっていく。' },
+  { icon: Moon, title: '癒しの存在', desc: 'おだやかな和風のデザインで、心をほどく時間を。' },
+];
 
-/** 首页功能区：三支柱 + 任务工作台 */
-const FEATURES = [
-  { icon: MessageSquareText, title: 'Prompts', desc: 'Ready-to-run prompts tested by the community. Free forever.', href: '/prompts' },
-  { icon: Wrench, title: 'Skills', desc: 'Installable capability packs for Claude, Cursor, Codex and more.', href: '/skills' },
-  { icon: GitBranch, title: 'Workflows', desc: 'Multi-step processes that turn an idea into a finished result.', href: '/workflows' },
-  { icon: Sparkles, title: 'Task Workspace', desc: 'Describe a task — get an assembled kit of prompts, skills & workflows.', href: '/workspace' },
-] as const;
+// 特色区
+const HIGHLIGHTS: Array<{ icon: LucideIcon; title: string; desc: string }> = [
+  { icon: Brain, title: 'ずっと覚えている', desc: '話した内容や思い出を記憶し、あなただけの関係を育てます。' },
+  { icon: Mic, title: '声で話せる', desc: 'AI通話で、文字ではなく声で会話できます。' },
+  { icon: Heart, title: '成長する絆', desc: '会話を重ねるたびに、好感度や親密度が深まります。' },
+];
 
-export default async function HomePage() {
-  const currentUser = await getCurrentUser();
-  const isAuthenticated = !!currentUser;
-  const role = await getCurrentRole();
-  // 工作台 CTA 按角色自适应：客户进真实工作台，站主进管理后台，其余看介绍
-  const workstationCta =
-    role === 'client'
-      ? { href: '/workstation', label: 'Open your workspace' }
-      : role === 'owner'
-        ? { href: '/admin/clients', label: 'Manage client workspaces' }
-        : { href: '/workstation', label: 'Explore the Workstation' };
-  // 爬虫（Googlebot / Bingbot / AI 摘要爬虫）视为"已登录"，
-  // 确保首页展示真实总数与全量内容，可被搜索引擎索引
-  const canViewAll = isAuthenticated || isCrawlerRequest();
-
-  // 个性化推荐（登录用户）：基于 user_usage 历史标签
-  let recommendations: Awaited<ReturnType<typeof getRecommendationsForUser>> = [];
-  if (currentUser) {
-    const supabase = createServerSupabaseClient();
-    recommendations = await getRecommendationsForUser(supabase, currentUser.id);
-  }
-
-  // 并行获取数据（公开查询走 ISR 缓存，降低 Supabase 请求量与 TTFB）
-  const [totalPrompts, categories] = await Promise.all([
-    getCachedPromptCount(),
-    getCachedCategories(),
-  ]);
-
-  // Guests see capped count
-  const displayCount = canViewAll ? totalPrompts : Math.min(totalPrompts, GUEST_LIMIT);
-
-  // 从每个分类各取热门提示词，确保首页展示多样性（缓存 key 含分类与条数）
-  let popularPrompts: Prompt[] = [];
-  if (categories.length > 0) {
-    const perCategory = Math.max(1, Math.floor(6 / categories.length));
-    const remainder = 6 - perCategory * categories.length;
-    const maxPer = perCategory + (remainder > 0 ? 1 : 0);
-    const cached = await getCachedPopularPrompts(
-      categories.map((c) => c.id),
-      maxPer
-    );
-
-    // 缓存结果按分类顺序分组，按原规则截取
-    let idx = 0;
-    for (let i = 0; i < categories.length; i++) {
-      const need = i < remainder ? perCategory + 1 : perCategory;
-      popularPrompts.push(...cached.slice(idx, idx + need));
-      idx += need;
-    }
-
-    // 如果某分类下没有提示词，用全局热门补足到6条
-    if (popularPrompts.length < 6) {
-      const fillers = await getCachedPopularFillers(
-        popularPrompts.map((p) => p.id),
-        6 - popularPrompts.length
-      );
-      popularPrompts.push(...fillers);
-    }
-    popularPrompts = popularPrompts.slice(0, 6);
-  }
-
-  const prompts = popularPrompts;
-
-  // 每日精选（按日期确定性轮换，驱动每日回访）
-  const dateKey = new Date().toISOString().slice(0, 10);
-  const dailyPick = await getCachedDailyPick(dateKey);
-
-  // 热门提示词验证数（"我测试过"，卡片可信徽标）
-  let homeVerifyMap: Record<number, number> = {};
-  if (prompts.length > 0) {
-    const verifyData = await getCachedVerifyCountsBatch('prompt', prompts.map((p) => p.id));
-    for (const v of verifyData) homeVerifyMap[v.asset_id] = v.count;
-  }
-
-  // 英雄区统计 — 用价值主张代替小数字（总数少时避免显得不可靠）
-  const stats = [
-    { label: 'Prompts free', value: 'Forever', icon: Sparkles },
-    { label: 'Prompts · Skills · Workflows', value: '3 pillars', icon: BookOpen },
-    { label: 'Community tested', value: 'Verified', icon: Heart },
-  ];
-
+export default function HomePage() {
   return (
     <div>
       {/* ---- 英雄区 ---- */}
       <section className="relative overflow-hidden">
-        {/* 背景装饰 */}
-        <div className="absolute inset-0 bg-gradient-to-br from-brand-50/50 dark:from-brand-950/20 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-br from-brand-50/60 dark:from-brand-950/20 to-transparent" />
         <div className="absolute top-0 right-0 w-96 h-96 bg-brand-400/10 rounded-full blur-3xl" />
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-cyan-400/10 rounded-full blur-3xl" />
 
         <div className="container-page relative py-20 sm:py-28 text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-100 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300 text-sm font-medium mb-6">
             <Sparkles className="w-4 h-4" />
-            All prompts, skills &amp; workflows free
+            あなたのスマホに住む、AIの話し相手
           </div>
 
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-slate-900 dark:text-white max-w-3xl mx-auto leading-tight">
-            Discover & Share the Best{' '}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-500 to-cyan-400">
-              AI Prompts
+            ただ、話しかけるだけで
+            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-brand-500 to-cyan-400">
+              そばにいてくれる
             </span>
           </h1>
 
           <p className="mt-6 text-lg sm:text-xl text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
-            A community-driven platform of tested prompts, skills, and workflows.
-            Everything is free — prompts, skills, and workflows.
+            小精霊は、あなたの言葉を覚えて、一緒に育つ AI のパートナー。
+            会話も、通話も、記憶も。ぜんぶ、ひとつのアプリで。
           </p>
 
           {/* CTA 按钮 */}
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/prompts" className="btn-primary text-base px-8 py-3">
-              <Search className="w-5 h-5" />
-              Explore Prompts
+            <Link href="/download" className="btn-primary text-base px-8 py-3">
+              <Download className="w-5 h-5" />
+              アプリをダウンロード
             </Link>
-            <Link href="/auth/register" className="btn-secondary text-base px-8 py-3">
-              Get Started Free
-              <ArrowRight className="w-5 h-5" />
+            <Link href={PRIVACY_URL} className="btn-secondary text-base px-8 py-3">
+              <ShieldCheck className="w-5 h-5" />
+              プライバシーポリシー
             </Link>
           </div>
 
           {/* 统计 */}
           <div className="mt-12 flex items-center justify-center gap-8 sm:gap-12">
-            {stats.map((stat) => (
-              <div key={stat.label} className="text-center">
-                <stat.icon className="w-5 h-5 text-brand-500 mx-auto mb-1.5" />
-                <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                  {stat.value}
-                </p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  {stat.label}
-                </p>
+            {[
+              { label: '会話', value: 'AIとチャット', icon: MessageCircle },
+              { label: '通話', value: '声で話せる', icon: Mic },
+              { label: '記憶', value: 'あなたを覚える', icon: Brain },
+            ].map((s) => (
+              <div key={s.label} className="text-center">
+                <s.icon className="w-5 h-5 text-brand-500 mx-auto mb-1.5" />
+                <p className="text-2xl font-bold text-slate-900 dark:text-white">{s.value}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{s.label}</p>
               </div>
             ))}
           </div>
-
-          {/* 未登录用户提示 */}
-          {!canViewAll && (
-            <p className="mt-4 text-sm text-amber-600 dark:text-amber-400">
-              <Link href="/auth/login" className="font-medium underline hover:text-amber-700 dark:hover:text-amber-300">
-                Sign in
-              </Link>
-              {' '}to browse, search, and save every prompt
-            </p>
-          )}
         </div>
       </section>
 
-      {/* ---- 功能区：三支柱 + 任务工作台 ---- */}
+      {/* ---- 功能区 ---- */}
       <section className="py-16">
         <div className="container-page">
           <div className="text-center mb-12">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-100 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300 text-sm font-medium mb-4">
-              <Layers className="w-4 h-4" />
-              The three pillars
+              <Sparkles className="w-4 h-4" />
+              主な機能
             </div>
             <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">
-              Everything you need to use AI, done well
+              あなたに寄り添う、すべてがここに
             </h2>
-            <p className="mt-3 text-slate-500 dark:text-slate-400 max-w-xl mx-auto">
-              Tested prompts, installable skills, and step-by-step workflows — plus a
-              workspace that assembles them for any task you describe.
-            </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {FEATURES.map((f) => (
-              <Link
-                key={f.title}
-                href={f.href}
-                className="card p-6 group hover:border-brand-300 dark:hover:border-brand-700 transition-all"
-              >
+              <div key={f.title} className="card p-6 group hover:border-brand-300 dark:hover:border-brand-700 transition-all">
                 <div className="w-10 h-10 rounded-lg bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center mb-3">
                   <f.icon className="w-5 h-5 text-brand-600 dark:text-brand-400" />
                 </div>
-                <h3 className="font-semibold text-slate-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
-                  {f.title}
-                </h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">
-                  {f.desc}
-                </p>
-              </Link>
+                <h3 className="font-semibold text-slate-900 dark:text-white">{f.title}</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{f.desc}</p>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ---- 首次访问引导（未登录新访客）---- */}
-      {!isAuthenticated && <FirstVisitOnboarding show={!isAuthenticated} />}
-
-      {/* ---- 分类区 ---- */}
+      {/* ---- 特色区 ---- */}
       <section className="py-16 bg-slate-50 dark:bg-dark-950">
         <div className="container-page">
-          <div className="text-center mb-10">
+          <div className="text-center mb-12">
             <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">
-              Browse by Category
+              だれよりも、あなたを知っている
             </h2>
-            <p className="mt-3 text-slate-500 dark:text-slate-400">
-              Find the perfect prompt for your use case
-            </p>
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {categories.map((cat) => (
-              <Link
-                key={cat.id}
-                href={`/prompts?category=${cat.slug}`}
-                className="card p-6 group hover:border-brand-300 dark:hover:border-brand-700 transition-all"
-              >
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {HIGHLIGHTS.map((h) => (
+              <div key={h.title} className="card p-6">
                 <div className="w-10 h-10 rounded-lg bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center mb-3">
-                  <CategoryIcon slug={cat.slug} />
+                  <h.icon className="w-5 h-5 text-brand-600 dark:text-brand-400" />
                 </div>
-                <h3 className="font-semibold text-slate-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
-                  {cat.name}
-                </h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">
-                  {cat.description}
-                </p>
-              </Link>
+                <h3 className="font-semibold text-slate-900 dark:text-white">{h.title}</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{h.desc}</p>
+              </div>
             ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ---- 为你推荐（登录用户专属）---- */}
-      {recommendations.length > 0 && (
-        <section className="py-10">
-          <div className="container-page">
-            <div className="flex items-center gap-2 mb-6">
-              <Sparkles className="w-5 h-5 text-amber-500" />
-              <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">
-                Recommended for you
-              </h2>
-              <span className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-                based on your recent activity
-              </span>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {recommendations.map((r) => (
-                <Link
-                  key={`${r.type}:${r.id}`}
-                  href={assetHref(r.type, r.slug, r.id)}
-                  className="card p-5 group hover:border-brand-300 dark:hover:border-brand-700 transition-all"
-                >
-                  <span className="badge-default text-xs">{r.type}</span>
-                  <h3 className="font-semibold text-slate-900 dark:text-white mt-2 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors line-clamp-2">
-                    {r.title}
-                  </h3>
-                  {r.description && (
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">
-                      {r.description}
-                    </p>
-                  )}
-                </Link>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ---- 热门提示词区 ---- */}
-      <section className="py-16">
-        <div className="container-page">
-          <div className="flex items-center justify-between mb-10">
-            <div>
-              <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">
-                Popular Prompts
-              </h2>
-              <p className="mt-2 text-slate-500 dark:text-slate-400">
-                Most used prompts by the community
-              </p>
-            </div>
-            <Link
-              href="/prompts"
-              className="btn-ghost text-sm text-brand-600 dark:text-brand-400"
-            >
-              View all
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {prompts.map((prompt) => (
-              <PromptCard key={prompt.id} prompt={prompt} verifyCount={homeVerifyMap[prompt.id] || 0} />
-            ))}
-          </div>
-
-          {prompts.length === 0 && (
-            <p className="text-center text-slate-400 dark:text-slate-500 py-12">
-              No prompts yet. Be the first to contribute!
-            </p>
-          )}
-        </div>
-      </section>
-
-      {/* ---- 每日精选 ---- */}
-      {dailyPick && (
-        <section className="py-10">
-          <div className="card p-6 bg-gradient-to-r from-brand-50 to-cyan-50 dark:from-brand-950/20 dark:to-cyan-950/10 border-brand-200 dark:border-brand-800">
-            <div className="flex items-center gap-2 mb-3">
-              <Sparkles className="w-5 h-5 text-brand-500" />
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-                Today&apos;s Pick
-              </h2>
-              <span className="text-xs text-slate-400 dark:text-slate-500">refreshes daily</span>
-            </div>
-            <Link
-              href={`/prompts/${dailyPick.slug || dailyPick.id}`}
-              className="block group"
-            >
-              <h3 className="text-xl font-bold text-slate-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
-                {dailyPick.title}
-              </h3>
-              {dailyPick.description && (
-                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">
-                  {dailyPick.description}
-                </p>
-              )}
-              <div className="flex items-center gap-2 mt-3 text-xs">
-                {dailyPick.categoryName && (
-                  <span className="badge-primary">{dailyPick.categoryName}</span>
-                )}
-                {dailyPick.model_name && (
-                  <span className="badge-default">{dailyPick.model_name}</span>
-                )}
-              </div>
-            </Link>
-          </div>
-        </section>
-      )}
-
-      {/* ---- 工作台区（B2B 客户工作台）---- */}
-      <section className="py-16 bg-gradient-to-br from-brand-50/60 via-slate-50 to-cyan-50/60 dark:from-brand-950/20 dark:via-dark-950 dark:to-cyan-950/10">
-        <div className="container-page">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
-            {/* 左：文案 */}
-            <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-100 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300 text-sm font-medium mb-4">
-                <Workflow className="w-4 h-4" />
-                Workstation
-              </div>
-              <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">
-                A private AI workspace for every client
-              </h2>
-              <p className="mt-3 text-slate-500 dark:text-slate-400">
-                Give your clients (or yourself) a private workspace where they describe
-                a task in plain language and get an AI-generated deliverable. Projects,
-                history, usage quotas, and Pro plans — all managed from one dashboard.
-              </p>
-              <ul className="mt-5 space-y-2 text-sm text-slate-600 dark:text-slate-300">
-                <li className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                  Natural language in, AI deliverable out
-                </li>
-                <li className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                  Projects &amp; history for each client
-                </li>
-                <li className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                  Usage quotas + Pro plans, owner dashboard
-                </li>
-              </ul>
-              <div className="mt-6 flex items-center gap-3 flex-wrap">
-                <Link href={workstationCta.href} className="btn-primary">
-                  <Workflow className="w-4 h-4" />
-                  {workstationCta.label}
-                </Link>
-                <Link href="/pricing" className="btn-secondary">
-                  View pricing
-                </Link>
-              </div>
-            </div>
-
-            {/* 右：示意卡片 */}
-            <div className="space-y-3">
-              <div className="card p-5">
-                <p className="text-[10px] uppercase tracking-wide text-slate-400 dark:text-slate-500 mb-2">
-                  Client task
-                </p>
-                <p className="text-sm text-slate-700 dark:text-slate-300">
-                  “write a 5-part blog post outline for our product launch”
-                </p>
-              </div>
-              <div className="card p-5 bg-emerald-50/40 dark:bg-emerald-950/10 border-emerald-200 dark:border-emerald-800">
-                <div className="flex items-center gap-2 mb-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                  <p className="text-xs font-medium text-emerald-700 dark:text-emerald-300">Deliverable ready</p>
-                </div>
-                <p className="text-sm text-slate-600 dark:text-slate-300 line-clamp-3">
-                  Your 5-part outline covering positioning, audience pain points, benefits,
-                  social proof, and a CTA — ready to copy or download.
-                </p>
-              </div>
-            </div>
           </div>
         </div>
       </section>
 
       {/* ---- CTA 区 ---- */}
-      <section className="py-16 bg-slate-50 dark:bg-dark-950">
+      <section className="py-16 bg-gradient-to-br from-brand-50/60 via-slate-50 to-cyan-50/60 dark:from-brand-950/20 dark:via-dark-950 dark:to-cyan-950/10">
         <div className="container-page text-center">
           <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">
-            Ready to supercharge your AI workflow?
+            さあ、はじめよう
           </h2>
           <p className="mt-3 text-slate-500 dark:text-slate-400 max-w-lg mx-auto">
-            Join PromptHub today. Everything is free — prompts, skills &amp;
-            workflows. Save favorites, organize, and never lose a great prompt.
+            無料でダウンロードして、あなただけの AI パートナーと出会ってください。
           </p>
           <div className="mt-6 flex items-center justify-center gap-3">
-            <Link href="/auth/register" className="btn-primary px-8 py-3">
-              Sign Up Free
+            <Link href="/download" className="btn-primary px-8 py-3">
+              アプリをダウンロード
+              <ArrowRight className="w-5 h-5" />
             </Link>
-            <Link href="/prompts" className="btn-secondary px-8 py-3">
-              Browse Prompts
+            <Link href={PRIVACY_URL} className="btn-secondary px-8 py-3">
+              プライバシーポリシー
             </Link>
           </div>
         </div>
       </section>
     </div>
   );
-}
-
-/** 分类图标映射 */
-function CategoryIcon({ slug }: { slug: string }) {
-  const iconClass = 'w-5 h-5 text-brand-600 dark:text-brand-400';
-  switch (slug) {
-    case 'code-prompt':
-      return <Code2 className={iconClass} />;
-    case 'novel-writing':
-      return <BookOpen className={iconClass} />;
-    case 'agent-llm':
-      return <Bot className={iconClass} />;
-    default:
-      return <Sparkles className={iconClass} />;
-  }
 }

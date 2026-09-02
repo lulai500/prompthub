@@ -13,17 +13,17 @@ import Footer from '@/components/layout/Footer';
 // SEO 元数据
 export const metadata: Metadata = {
   title: {
-    default: 'PromptHub - Discover & Share AI Prompts',
-    template: '%s | PromptHub',
+    default: '小精霊 (Little Spirit) - AIの話し相手',
+    template: '%s | 小精霊',
   },
   description:
-    'Discover, share, and collect the best AI prompts. A community-driven platform for prompt engineers, developers, and AI enthusiasts.',
-  keywords: ['AI prompts', 'prompt engineering', 'ChatGPT', 'Claude', 'AI tools'],
+    'あなたのスマホに住むAIの話し相手。会話・通話・記憶・絆。あなたの言葉を覚えて、一緒に育つ。',
+  keywords: ['AI彼女', 'AI通話', '話し相手', 'チャット', 'バーチャル彼女', '小精霊'],
   openGraph: {
-    title: 'PromptHub - Discover & Share AI Prompts',
-    description: 'The ultimate AI prompt sharing platform.',
+    title: '小精霊 (Little Spirit) - AIの話し相手',
+    description: 'あなたの言葉を覚えて、そばにいてくれるAIのパートナー。',
     type: 'website',
-    locale: 'en_US',
+    locale: 'ja_JP',
   },
 };
 
@@ -43,7 +43,7 @@ export default function RootLayout({
   const isAdmin = headers().get('x-admin') === '1';
 
   return (
-    <html lang="en" className={htmlClass} suppressHydrationWarning>
+    <html lang="ja" className={htmlClass} suppressHydrationWarning>
       <head>
         {/* 禁用 Chrome 自动翻译，防止其修改 DOM 导致 React 水合 insertBefore 错误 */}
         <meta name="google" content="notranslate" />
